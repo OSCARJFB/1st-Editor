@@ -120,7 +120,7 @@ void startUp(int argc, char **argv)
 	closeFile(FP);
 
 	// Load the buffer into a linked list, then free the buffer. 
-	bufList *head = createNodesFromBuffer(buffer, fileSize);
+	TEXT *head = createNodesFromBuffer(buffer, fileSize);
 	freeBuffer(buffer);
 	editTextFile(head, argv[1]);
 }

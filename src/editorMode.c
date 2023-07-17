@@ -14,7 +14,7 @@ int _tabSize = 6;
 int _copySize = 0;
 int _viewStart = 0;
 
-bufList *createNodesFromBuffer(char *buffer, long fileSize)
+TEXT *createNodesFromBuffer(char *buffer, long fileSize)
 {
 	if (buffer == NULL)
 	{
@@ -22,7 +22,7 @@ bufList *createNodesFromBuffer(char *buffer, long fileSize)
 	}
 
 	coordinates xy = {0, 0};
-	bufList *head = NULL;
+	TEXT *head = NULL;
 
 	// Add each character from the read file to the list.
 	for (int i = 0; i < fileSize; ++i)
@@ -43,7 +43,7 @@ bufList *createNodesFromBuffer(char *buffer, long fileSize)
 	return head;
 }
 
-int getFileSizeFromList(bufList *head)
+int getFileSizeFromList(TEXT *head)
 {
 	int fileSize = 0;
 	for (int i = 0; head != NULL; ++i)
@@ -59,7 +59,7 @@ int getFileSizeFromList(bufList *head)
 	return fileSize;
 }
 
-void save(bufList *head, char *fileName)
+void save(TEXT *head, char *fileName)
 {
 	FILE *fp = NULL;
 	char *buffer = saveListToBuffer(head, getFileSizeFromList(head));
@@ -75,10 +75,17 @@ void save(bufList *head, char *fileName)
 		{
 			free(buffer);
 			buffer = NULL;
-			return; 
+			return;
 		}
-		
-		fileName = newName;
+
+		fileName = malloc(sizeof(char) * FILENAME_SIZE);
+		if(fileName == NULL)
+		{
+			free(buffer);
+			buffer = NULL;
+			return;
+		}
+		strcpy(fileName, newName);
 	}
 
 	fp = fopen(fileName, "w");
@@ -93,7 +100,7 @@ void save(bufList *head, char *fileName)
 	buffer = NULL;
 }
 
-char *saveListToBuffer(bufList *head, int fileSize)
+char *saveListToBuffer(TEXT *head, int fileSize)
 {
 	if (fileSize == 0)
 	{
@@ -118,18 +125,23 @@ char *saveListToBuffer(bufList *head, int fileSize)
 
 char *newFileName(void)
 {
-	char *fileName = NULL;
-	int mult = 0;
-	for (int ch = 0; ch != '\n'; ch = wgetch(stdscr))
+	char *fileName = malloc(sizeof(char) * FILENAME_SIZE);
+	if(fileName == NULL)
 	{
-		fileName = realloc(fileName, sizeof(char) * (mult + 1));
-		fileName[mult++] = ch;
+		return NULL; 
 	}
 
+	int index = 0;
+	for (int ch = 0; ch != '\n' && index < FILENAME_SIZE; ch = wgetch(stdscr))
+	{
+		fileName[index++] = ch;
+	}
+
+	fileName[index] = '\0';
 	return fileName;
 }
 
-void deleteAllNodes(bufList *head)
+void deleteAllNodes(TEXT *head)
 {
 	if (head == NULL)
 	{
@@ -137,7 +149,7 @@ void deleteAllNodes(bufList *head)
 	}
 
 	// Delete and free every single node.
-	bufList *temp = NULL;
+	TEXT *temp = NULL;
 	while (head != NULL)
 	{
 		temp = head;
@@ -149,9 +161,9 @@ void deleteAllNodes(bufList *head)
 	head = NULL;
 }
 
-bufList *createNewNode(int ch)
+TEXT *createNewNode(int ch)
 {
-	bufList *next_node = malloc(sizeof(bufList));
+	TEXT *next_node = malloc(sizeof(TEXT));
 	if (next_node == NULL)
 	{
 		return NULL;
@@ -163,7 +175,7 @@ bufList *createNewNode(int ch)
 	return next_node;
 }
 
-coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, bufList *node)
+coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, TEXT *node)
 {
 	switch (sFlag)
 	{
@@ -196,7 +208,7 @@ coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, bufList *node)
 	return xy;
 }
 
-coordinates addNode(bufList **head, int ch, coordinates xy)
+coordinates addNode(TEXT **head, int ch, coordinates xy)
 {
 	// Currently there is no list existing.
 	if (*head == NULL)
@@ -207,7 +219,7 @@ coordinates addNode(bufList **head, int ch, coordinates xy)
 	}
 
 	// Create a new node and add base values, depending on parameter input.
-	bufList *next_node = createNewNode(ch), *last_node = *head, *prev_node = NULL;
+	TEXT *next_node = createNewNode(ch), *last_node = *head, *prev_node = NULL;
 
 	// Find the last node in the list, for each step check if ch was added in between list bounderies.
 	while (last_node->next != NULL)
@@ -245,7 +257,7 @@ coordinates addNode(bufList **head, int ch, coordinates xy)
 	return xy;
 }
 
-coordinates deleteNode(bufList **head, coordinates xy)
+coordinates deleteNode(TEXT **head, coordinates xy)
 {
 	// We can't free/delete a node which is NULL or if at end of coordinates.
 	if (*head == NULL || (xy.x == _leftMargin && xy.y == 0))
@@ -254,7 +266,7 @@ coordinates deleteNode(bufList **head, coordinates xy)
 	}
 
 	bool isEndNode = true;
-	bufList *del_node = *head, *temp_node = NULL;
+	TEXT *del_node = *head, *temp_node = NULL;
 
 	// Find the node to be deleted.
 	while (del_node->next != NULL)
@@ -317,7 +329,7 @@ coordinates deleteNode(bufList **head, coordinates xy)
 	return xy;
 }
 
-coordinates getEndNodeCoordinates(bufList *head)
+coordinates getEndNodeCoordinates(TEXT *head)
 {
 	updateCoordinatesInView(&head);
 	coordinates xy = {0, 0};
@@ -346,7 +358,7 @@ coordinates getEndNodeCoordinates(bufList *head)
 	return xy;
 }
 
-void updateCoordinatesInView(bufList **head)
+void updateCoordinatesInView(TEXT **head)
 {
 	if (*head == NULL)
 	{
@@ -354,7 +366,7 @@ void updateCoordinatesInView(bufList **head)
 	}
 
 	int x = _leftMargin, y = 0, newLines = 0;
-	for (bufList *node = *head; node != NULL; node = node->next)
+	for (TEXT *node = *head; node != NULL; node = node->next)
 	{
 		if (newLines >= _viewStart)
 		{
@@ -376,7 +388,7 @@ void updateCoordinatesInView(bufList **head)
 				++y;
 			}
 		}
-		
+
 		newLines += node->ch == '\n' ? 1 : 0;
 		if (newLines >= getmaxy(stdscr) + _viewStart)
 		{
@@ -416,16 +428,16 @@ dataCopied getCopyEnd(dataCopied cpy_data, coordinates xy)
 	return cpy_data;
 }
 
-char *saveCopiedText(bufList *head, coordinates cpy_start, coordinates cpy_end)
+char *saveCopiedText(TEXT *head, coordinates cpy_start, coordinates cpy_end)
 {
 	char *cpy_List = NULL;
 	int i = 0;
 	bool start_found = false;
 
-	if(cpy_start.y > cpy_end.y || (cpy_start.y == cpy_end.y && cpy_start.x > cpy_end.x))
-	{	
-		coordinates temp = cpy_start; 
-		cpy_start = cpy_end; 
+	if (cpy_start.y > cpy_end.y || (cpy_start.y == cpy_end.y && cpy_start.x > cpy_end.x))
+	{
+		coordinates temp = cpy_start;
+		cpy_start = cpy_end;
 		cpy_end = temp;
 	}
 
@@ -464,7 +476,7 @@ char *saveCopiedText(bufList *head, coordinates cpy_start, coordinates cpy_end)
 	return cpy_List;
 }
 
-void pasteCopiedlist(bufList **head, char *cpy_List, coordinates xy)
+void pasteCopiedlist(TEXT **head, char *cpy_List, coordinates xy)
 {
 	if (*head == NULL || cpy_List == NULL)
 	{
@@ -472,7 +484,7 @@ void pasteCopiedlist(bufList **head, char *cpy_List, coordinates xy)
 	}
 
 	// First find the paste start location should.
-	bufList *preList = *head;
+	TEXT *preList = *head;
 	for (; preList->next != NULL; preList = preList->next)
 	{
 		if (preList->x == xy.x && preList->y == xy.y)
@@ -487,12 +499,12 @@ void pasteCopiedlist(bufList **head, char *cpy_List, coordinates xy)
 		preList = preList->prev;
 	}
 
-	bufList *postList = preList->next;
+	TEXT *postList = preList->next;
 
 	// Create and chain each new node from the copy buffer.
 	for (int i = 0; i < _copySize; ++i)
 	{
-		bufList *new_node = createNewNode(cpy_List[i]);
+		TEXT *new_node = createNewNode(cpy_List[i]);
 		preList->next = new_node;
 		new_node->prev = preList;
 		preList = preList->next;
@@ -506,7 +518,7 @@ void pasteCopiedlist(bufList **head, char *cpy_List, coordinates xy)
 	}
 }
 
-int countNewLines(bufList *head)
+int countNewLines(TEXT *head)
 {
 	int newlines = 0;
 
@@ -524,7 +536,7 @@ int countNewLines(bufList *head)
 	return newlines;
 }
 
-void setLeftMargin(bufList *head)
+void setLeftMargin(TEXT *head)
 {
 	int newLines = countNewLines(head);
 
@@ -547,7 +559,7 @@ void setLeftMargin(bufList *head)
 	}
 }
 
-void printNodes(bufList *head)
+void printNodes(TEXT *head)
 {
 	int lineNumber = 0;
 	bool nlFlag = true;
@@ -563,7 +575,7 @@ void printNodes(bufList *head)
 
 	// Print the nodes at x and y position.
 	wclear(stdscr);
-	for (bufList *node = head; node != NULL; node = node->next)
+	for (TEXT *node = head; node != NULL; node = node->next)
 	{
 		if (lineNumber >= _viewStart)
 		{
@@ -575,14 +587,14 @@ void printNodes(bufList *head)
 
 			mvwaddch(stdscr, node->y, node->x, node->ch);
 		}
-		
+
 		if (node->ch == '\n')
 		{
 			nlFlag = true;
 			++lineNumber;
 		}
 
-		if(lineNumber >= getmaxy(stdscr) + _viewStart)
+		if (lineNumber >= getmaxy(stdscr) + _viewStart)
 		{
 			break;
 		}
@@ -640,7 +652,7 @@ coordinates moveArrowKeys(int ch, coordinates xy)
 	return xy;
 }
 
-coordinates edit(bufList **head, coordinates xy, int ch)
+coordinates edit(TEXT **head, coordinates xy, int ch)
 {
 	if (ch == KEY_BACKSPACE)
 	{
@@ -654,12 +666,12 @@ coordinates edit(bufList **head, coordinates xy, int ch)
 	return xy;
 }
 
-dataCopied copy(dataCopied cpy_data, bufList *head, coordinates xy)
+dataCopied copy(dataCopied cpy_data, TEXT *head, coordinates xy)
 {
 	if (cpy_data.cpy_List != NULL)
 	{
 		free(cpy_data.cpy_List);
-		cpy_data.cpy_List = NULL; 
+		cpy_data.cpy_List = NULL;
 	}
 
 	cpy_data = getCopyStart(cpy_data, xy);
@@ -686,7 +698,7 @@ void updateViewPort(coordinates xy, int ch)
 	}
 }
 
-void editTextFile(bufList *head, char *fileName)
+void editTextFile(TEXT *head, char *fileName)
 {
 	dataCopied cpy_data = {NULL, {0, 0}, {0, 0}, false, false};
 	coordinates xy = getEndNodeCoordinates(head);
