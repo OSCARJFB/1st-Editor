@@ -18,18 +18,19 @@
 #define ESC_KEY 27
 #define NO_KEY -1
 #define CPY_BUFFER_SIZE 1000
+#define FILENAME_SIZE 100
 
 typedef struct coordinates
 {
 	int x, y;
 } coordinates;
 
-typedef struct bufList
+typedef struct TEXT
 {
 	int ch, x, y;
-	struct bufList *next;
-	struct bufList *prev;
-} bufList;
+	struct TEXT *next;
+	struct TEXT *prev;
+} TEXT;
 
 typedef struct dataCopied
 {
@@ -78,32 +79,31 @@ extern int _leftMargin;
 extern int _rightMargin;
 extern int _tabSize;
 extern int _copySize;
-extern int _currentLine;
 extern int _viewStart;
 
-bufList *createNodesFromBuffer(char *buffer, long fileSize);
-bufList *createNewNode(int ch);
-coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, bufList *last_node);
-coordinates addNode(bufList **head, int ch, coordinates xy);
-coordinates deleteNode(bufList **head, coordinates xy);
-coordinates getEndNodeCoordinates(bufList *head);
+TEXT *createNodesFromBuffer(char *buffer, long fileSize);
+TEXT *createNewNode(int ch);
+coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, TEXT *last_node);
+coordinates addNode(TEXT **head, int ch, coordinates xy);
+coordinates deleteNode(TEXT **head, coordinates xy);
+coordinates getEndNodeCoordinates(TEXT *head);
 dataCopied getCopyStart(dataCopied cp_data, coordinates xy);
 dataCopied getCopyEnd(dataCopied cp_data, coordinates xy);
-char *saveCopiedText(bufList *head, coordinates cp_start, coordinates cp_end);
-void pasteCopiedlist(bufList **head, char *cpy_List, coordinates xy);
-void save(bufList *head, char *fileName);
-int getFileSizeFromList(bufList *head);
-char *saveListToBuffer(bufList *head, int size);
+char *saveCopiedText(TEXT *head, coordinates cp_start, coordinates cp_end);
+void pasteCopiedlist(TEXT **head, char *cpy_List, coordinates xy);
+void save(TEXT *head, char *fileName);
+int getFileSizeFromList(TEXT *head);
+char *saveListToBuffer(TEXT *head, int size);
 char *newFileName(void);
-void deleteAllNodes(bufList *head);
-void updateCoordinatesInView(bufList **head);
-int countNewLines(bufList *head);
-void setLeftMargin(bufList *head);
-void printNodes(bufList *head);
+void deleteAllNodes(TEXT *head);
+void updateCoordinatesInView(TEXT **head);
+int countNewLines(TEXT *head);
+void setLeftMargin(TEXT *head);
+void printNodes(TEXT *head);
 int setMode(int ch);
 coordinates moveArrowKeys(int ch, coordinates xy);
-coordinates edit(bufList **head, coordinates xy, int ch);
-dataCopied copy(dataCopied cpy_data, bufList *head, coordinates xy);
-void editTextFile(bufList *head, char *fileName);
+coordinates edit(TEXT **head, coordinates xy, int ch);
+dataCopied copy(dataCopied cpy_data, TEXT *head, coordinates xy);
+void editTextFile(TEXT *head, char *fileName);
 
 #endif // EDITORMODE_H
