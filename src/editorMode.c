@@ -134,7 +134,10 @@ char *newFileName(void)
 	int index = 0;
 	for (int ch = 0; ch != '\n' && index < FILENAME_SIZE; ch = wgetch(stdscr))
 	{
-		fileName[index++] = ch;
+		if(ch != '\0')
+		{
+			fileName[index++] = ch;
+		}
 	}
 
 	fileName[index] = '\0';
