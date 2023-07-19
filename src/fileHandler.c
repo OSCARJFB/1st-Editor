@@ -15,51 +15,51 @@ FILE *getFileFromArg(int argc, char **argv)
 		return NULL;
 	}
 
-	FILE *FP = fopen(argv[1], "r");
-	if (FP == NULL)
+	FILE *fp = fopen(argv[1], "r");
+	if (fp == NULL)
 	{
 		return NULL;
 	}
 
-	return FP;
+	return fp;
 }
 
 FILE *getFile(const char *path)
 {
-	FILE *FP = fopen(path, "a");
-	if (FP == NULL)
+	FILE *fp = fopen(path, "a");
+	if (fp == NULL)
 	{
 		return NULL;
 	}
 
-	return FP;
+	return fp;
 }
 
-void closeFile(FILE *FP)
+void closeFile(FILE *fp)
 {
-	if(FP == NULL)
+	if(fp == NULL)
 	{
 		return; 
 	}
 	
-	fclose(FP);
-	FP = NULL;
+	fclose(fp);
+	fp = NULL;
 }
 
-int getFileSize(FILE *FP)
+long getFileSize(FILE *fp)
 {
-	if(FP == NULL)
+	if(fp == NULL)
 	{
 		return 0; 
 	}
 	
 	long bufferSize = 0;
-	if (fseek(FP, 0, SEEK_END) == -1)
+	if (fseek(fp, 0, SEEK_END) == -1)
 	{
 		return -1;
 	}
 
-	bufferSize = ftell(FP);
+	bufferSize = ftell(fp);
 	if (bufferSize == -1)
 	{
 		return -1;
@@ -70,7 +70,7 @@ int getFileSize(FILE *FP)
 
 char *allocateBuffer(int fileSize)
 {
-	if(fileSize == 0)
+	if(fileSize == 0 || fileSize == -1)
 	{
 		return NULL; 
 	}
@@ -95,15 +95,15 @@ void freeBuffer(char *buffer)
 	buffer = NULL;
 }
 
-void loadBuffer(char *buffer, FILE *FP, long fileSize)
+void loadBuffer(char *buffer, FILE *fp, long fileSize)
 {
 	if(buffer == NULL)
 	{
 		return;
 	}
 	
-	rewind(FP);
-	while (fread(buffer, fileSize, 1, FP) > 0)
+	rewind(fp);
+	while (fread(buffer, fileSize, 1, fp) > 0)
 	{
 	};
 }
@@ -111,13 +111,13 @@ void loadBuffer(char *buffer, FILE *FP, long fileSize)
 void startUp(int argc, char **argv)
 {
 	// Set the file pointer according to args provided. Check the size of the file provided. 
-	FILE *FP = getFileFromArg(argc, argv);
-	long fileSize = getFileSize(FP);
+	FILE *fp = getFileFromArg(argc, argv);
+	long fileSize = getFileSize(fp);
 	
 	// Depending on the size allocate a buffer storing the file, then close it. 
 	char *buffer = allocateBuffer(fileSize);
-	loadBuffer(buffer, FP, fileSize);
-	closeFile(FP);
+	loadBuffer(buffer, fp, fileSize);
+	closeFile(fp);
 
 	// Load the buffer into a linked list, then free the buffer. 
 	TEXT *head = createNodesFromBuffer(buffer, fileSize);

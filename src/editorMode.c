@@ -130,14 +130,29 @@ char *newFileName(void)
 	{
 		return NULL; 
 	}
-
+	
 	int index = 0;
 	for (int ch = 0; ch != '\n' && index < FILENAME_SIZE; ch = wgetch(stdscr))
 	{
 		if(ch != '\0')
 		{
-			fileName[index++] = ch;
+			if(ch == KEY_BACKSPACE)
+			{
+				--index; 
+			}
+			else
+			{
+				fileName[index++] = ch;
+			}
 		}
+
+		wclear(stdscr);
+		printw(": "); 
+		for(int i = 0; i < index; ++i)
+		{
+			printw("%c", fileName[i]);
+		}
+		wrefresh(stdscr); 
 	}
 
 	fileName[index] = '\0';
@@ -149,7 +164,7 @@ void deleteAllNodes(TEXT *head)
 	if (head == NULL)
 	{
 		return;
-	}
+	}	
 
 	// Delete and free every single node.
 	TEXT *temp = NULL;
@@ -180,6 +195,9 @@ TEXT *createNewNode(int ch)
 
 coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, TEXT *node)
 {
+	// Set cursor according to what type of edit was done. 
+	// This is used both when deleting and adding to the list. 
+
 	switch (sFlag)
 	{
 	case ADD_FIRST_NODE:
@@ -627,6 +645,8 @@ int setMode(int ch)
 		return COPY;
 	case 'v':
 		return PASTE;
+	case 'o':
+		return OPEN_FILE;
 	case 'e':
 		return EXIT;
 	}
@@ -657,6 +677,9 @@ coordinates moveArrowKeys(int ch, coordinates xy)
 
 coordinates edit(TEXT **head, coordinates xy, int ch)
 {
+	// If backspace is pressed delete a node at the current cursor location. 
+	// Else if ch is within the bounds of the condition add it in a new node. 
+
 	if (ch == KEY_BACKSPACE)
 	{
 		xy = deleteNode(head, xy);
@@ -690,6 +713,9 @@ dataCopied copy(dataCopied cpy_data, TEXT *head, coordinates xy)
 
 void updateViewPort(coordinates xy, int ch)
 {
+	// Update view port of the text. 
+	// This could be seen as some kind of paging making editing possible outside of terminal max xy,
+
 	if (xy.y >= getmaxy(stdscr) && (ch == '\n' || ch == KEY_DOWN))
 	{
 		++_viewStart;
@@ -699,6 +725,37 @@ void updateViewPort(coordinates xy, int ch)
 	{
 		--_viewStart;
 	}
+}
+ 
+TEXT *openFile(TEXT *head, char *fileName)
+{
+	// Get the name of the file to be open. 
+	char *path = newFileName();
+	if (path == NULL)
+	{
+		wclear(stdscr);
+		printw("Couldn't open file"); 
+		wrefresh(stdscr); 
+		return head;
+	}
+	// Set assigned path as the file name. 
+	strcpy(fileName, path);
+
+	// Open the file at the location/path, then fetch the size of the file. 
+	FILE *fp = getFile(path); 
+	long fileSize = getFileSize(fp);
+
+	// Use the file size to allocate a buffer, loadfile data into the buffer. 
+	char *buffer = allocateBuffer(fileSize);
+	loadBuffer(buffer, fp, fileSize); 
+
+	// At this stage we delete/free the previous list. 
+	deleteAllNodes(head); 
+
+	// Create a new list frm the buffer, when done free and return the new list.
+	head = createNodesFromBuffer(buffer, fileSize);
+	freeBuffer(buffer);
+	return head; 
 }
 
 void editTextFile(TEXT *head, char *fileName)
@@ -725,6 +782,9 @@ void editTextFile(TEXT *head, char *fileName)
 			break;
 		case PASTE:
 			pasteCopiedlist(&head, cpy_data.cpy_List, xy);
+			break;
+		case OPEN_FILE: 
+			head = openFile(head, fileName); 
 			break;
 		case EXIT:
 			is_running = false;

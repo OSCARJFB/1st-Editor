@@ -14,5 +14,3 @@ COMMAND LIST:
 
 BUGS/KNOWN ISSUES:
 - Tab is not working correctly.
-- Calculation of x coordinates when newline is entered.
-- Saving with a new filename is not memorysafe and doesn't seem to work. 

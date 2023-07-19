@@ -14,6 +14,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <ncurses.h>
+#include "fileHandler.h"
 
 #define ESC_KEY 27
 #define NO_KEY -1
@@ -63,7 +64,8 @@ enum mode
 	SAVE = 1,
 	COPY = 2,
 	PASTE = 3,
-	EXIT = 4
+	OPEN_FILE = 4, 
+	EXIT = 5
 };
 
 enum state

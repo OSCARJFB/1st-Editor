@@ -16,11 +16,11 @@
 
 FILE *getFileFromArg(int argc, char **argv);
 FILE *getFile(const char *path);
-void closeFile(FILE *FP);
-int getFileSize(FILE *FP);
+void closeFile(FILE *fp);
+long getFileSize(FILE *fp);
 char *allocateBuffer(int fileSize);
 void freeBuffer(char *buffer);
-void loadBuffer(char *buffer, FILE *FP, long fileSize);
+void loadBuffer(char *buffer, FILE *fp, long fileSize);
 void startUp(int argc, char **argv);
 
 #endif // FILEHANDLER_H
