@@ -130,14 +130,27 @@ char *newFileName(void)
 	{
 		return NULL; 
 	}
-
+	
 	int index = 0;
 	for (int ch = 0; ch != '\n' && index < FILENAME_SIZE; ch = wgetch(stdscr))
 	{
 		if(ch != '\0')
 		{
+			if(ch == KEY_BACKSPACE)
+			{
+				--index; 
+			}
+
 			fileName[index++] = ch;
 		}
+
+		wclear(stdscr);
+		printw("Save as: "); 
+		for(int i = 0; i < index; ++i)
+		{
+			printw("%c", fileName[i]);
+		}
+		wrefresh(stdscr); 
 	}
 
 	fileName[index] = '\0';
