@@ -13,6 +13,7 @@ int _rightMargin = 0;
 int _tabSize = 6;
 int _copySize = 0;
 int _viewStart = 0;
+long _fileSize = 0;
 
 TEXT *createNodesFromBuffer(char *buffer, long fileSize)
 {
@@ -43,10 +44,10 @@ TEXT *createNodesFromBuffer(char *buffer, long fileSize)
 	return head;
 }
 
-int getFileSizeFromList(TEXT *head)
+long getFileSizeFromList(TEXT *head)
 {
-	int fileSize = 0;
-	for (int i = 0; head != NULL; ++i)
+	long fileSize = 0;
+	for (long i = 0; head != NULL; ++i)
 	{
 		head = head->next;
 		if (head->next == NULL)
@@ -62,7 +63,8 @@ int getFileSizeFromList(TEXT *head)
 void save(TEXT *head, char *fileName)
 {
 	FILE *fp = NULL;
-	char *buffer = saveListToBuffer(head, getFileSizeFromList(head));
+	_fileSize = getFileSizeFromList(head);
+	char *buffer = saveListToBuffer(head, _fileSize);
 	if (buffer == NULL)
 	{
 		return;
@@ -79,7 +81,7 @@ void save(TEXT *head, char *fileName)
 		}
 
 		fileName = malloc(sizeof(char) * FILENAME_SIZE);
-		if(fileName == NULL)
+		if (fileName == NULL)
 		{
 			free(buffer);
 			buffer = NULL;
@@ -100,7 +102,7 @@ void save(TEXT *head, char *fileName)
 	buffer = NULL;
 }
 
-char *saveListToBuffer(TEXT *head, int fileSize)
+char *saveListToBuffer(TEXT *head, long fileSize)
 {
 	if (fileSize == 0)
 	{
@@ -123,22 +125,45 @@ char *saveListToBuffer(TEXT *head, int fileSize)
 	return buffer;
 }
 
+void saveOnFileChange(TEXT *head, char *fileName)
+{
+	long currentFileSize = getFileSizeFromList(head);
+	if (currentFileSize == _fileSize)
+	{
+		return;
+	}
+	
+	wclear(stdscr);
+	printw("%s have been modified, would you like to save? (Y/N)", fileName);
+	int ch = wgetch(stdscr);
+	if(ch == 'y' || ch == 'Y')
+	{
+		if(fileName == NULL)
+		{
+			fileName = newFileName();
+		}
+
+		save(head, fileName);
+	}
+	wrefresh(stdscr);
+}
+
 char *newFileName(void)
 {
 	char *fileName = malloc(sizeof(char) * FILENAME_SIZE);
-	if(fileName == NULL)
+	if (fileName == NULL)
 	{
-		return NULL; 
+		return NULL;
 	}
-	
+
 	int index = 0;
 	for (int ch = 0; ch != '\n' && index < FILENAME_SIZE; ch = wgetch(stdscr))
 	{
-		if(ch != '\0')
+		if (ch != '\0')
 		{
-			if(ch == KEY_BACKSPACE)
+			if (ch == KEY_BACKSPACE)
 			{
-				--index; 
+				--index;
 			}
 			else
 			{
@@ -147,12 +172,12 @@ char *newFileName(void)
 		}
 
 		wclear(stdscr);
-		printw(": "); 
-		for(int i = 0; i < index; ++i)
+		printw(": ");
+		for (int i = 0; i < index; ++i)
 		{
 			printw("%c", fileName[i]);
 		}
-		wrefresh(stdscr); 
+		wrefresh(stdscr);
 	}
 
 	fileName[index] = '\0';
@@ -164,7 +189,7 @@ void deleteAllNodes(TEXT *head)
 	if (head == NULL)
 	{
 		return;
-	}	
+	}
 
 	// Delete and free every single node.
 	TEXT *temp = NULL;
@@ -195,8 +220,8 @@ TEXT *createNewNode(int ch)
 
 coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, TEXT *node)
 {
-	// Set cursor according to what type of edit was done. 
-	// This is used both when deleting and adding to the list. 
+	// Set cursor according to what type of edit was done.
+	// This is used both when deleting and adding to the list.
 
 	switch (sFlag)
 	{
@@ -677,8 +702,8 @@ coordinates moveArrowKeys(int ch, coordinates xy)
 
 coordinates edit(TEXT **head, coordinates xy, int ch)
 {
-	// If backspace is pressed delete a node at the current cursor location. 
-	// Else if ch is within the bounds of the condition add it in a new node. 
+	// If backspace is pressed delete a node at the current cursor location.
+	// Else if ch is within the bounds of the condition add it in a new node.
 
 	if (ch == KEY_BACKSPACE)
 	{
@@ -713,7 +738,7 @@ dataCopied copy(dataCopied cpy_data, TEXT *head, coordinates xy)
 
 void updateViewPort(coordinates xy, int ch)
 {
-	// Update view port of the text. 
+	// Update view port of the text.
 	// This could be seen as some kind of paging making editing possible outside of terminal max xy,
 
 	if (xy.y >= getmaxy(stdscr) && (ch == '\n' || ch == KEY_DOWN))
@@ -726,35 +751,39 @@ void updateViewPort(coordinates xy, int ch)
 		--_viewStart;
 	}
 }
- 
+
 TEXT *openFile(TEXT *head, char *fileName)
 {
-	// Get the name of the file to be open. 
+	// Get the name of the file to be open.
 	char *path = newFileName();
 	if (path == NULL)
 	{
 		wclear(stdscr);
-		printw("Couldn't open file"); 
-		wrefresh(stdscr); 
+		printw("Couldn't open file");
+		wrefresh(stdscr);
 		return head;
 	}
-	// Set assigned path as the file name. 
+
+	saveOnFileChange(head, fileName);
+
+	// Set assigned path as the file name.
 	strcpy(fileName, path);
 
 	// Open the file and get its size.
-	FILE *fp = getFile(fileName); 
+	FILE *fp = getFile(fileName);
 	long fileSize = getFileSize(fp);
 
 	// Allocate a buffer and load the data from the file into the buffer.
 	char *buffer = allocateBuffer(fileSize);
-	loadBuffer(buffer, fp, fileSize); 
+	loadBuffer(buffer, fp, fileSize);
 
-	// Create a new list frm the buffer, when done free and return the new list.
-	deleteAllNodes(head); 
+	// Create a new list from the buffer, when done free and return the new list.
+	deleteAllNodes(head);
 	head = createNodesFromBuffer(buffer, fileSize);
-	
+	_fileSize = getFileSizeFromList(head);
+
 	freeBuffer(buffer);
-	return head; 
+	return head;
 }
 
 void editTextFile(TEXT *head, char *fileName)
@@ -762,6 +791,7 @@ void editTextFile(TEXT *head, char *fileName)
 	dataCopied cpy_data = {NULL, {0, 0}, {0, 0}, false, false};
 	coordinates xy = getEndNodeCoordinates(head);
 	printNodes(head);
+	_fileSize = getFileSizeFromList(head);
 
 	for (int ch = 0, is_running = true; is_running; ch = wgetch(stdscr))
 	{
@@ -782,10 +812,11 @@ void editTextFile(TEXT *head, char *fileName)
 		case PASTE:
 			pasteCopiedlist(&head, cpy_data.cpy_List, xy);
 			break;
-		case OPEN_FILE: 
-			head = openFile(head, fileName); 
+		case OPEN_FILE:
+			head = openFile(head, fileName);
 			break;
 		case EXIT:
+			saveOnFileChange(head, fileName);
 			is_running = false;
 			break;
 		}

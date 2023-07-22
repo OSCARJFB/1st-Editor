@@ -52,29 +52,29 @@ enum lineLimit
 enum marginSize
 {
 	MARGIN_SPACE_2 = 2,
-	MARGIN_SPACE_3 = 3,
-	MARGIN_SPACE_4 = 4,
-	MARGIN_SPACE_5 = 5,
-	MARGIN_SPACE_6 = 6,
+	MARGIN_SPACE_3,
+	MARGIN_SPACE_4,
+	MARGIN_SPACE_5,
+	MARGIN_SPACE_6,
 };
 
 enum mode
 {
-	EDIT = 0,
-	SAVE = 1,
-	COPY = 2,
-	PASTE = 3,
-	OPEN_FILE = 4, 
-	EXIT = 5
+	EDIT,
+	SAVE,
+	COPY,
+	PASTE,
+	OPEN_FILE, 
+	EXIT
 };
 
 enum state
 {
-	ADD_FIRST_NODE = 0, 
-	ADD_MIDDLE_NODE = 1,
-	ADD_END_NODE = 2,
-	DEL_NODE = 3,
-	DEL_AT_END = 4
+	ADD_FIRST_NODE, 
+	ADD_MIDDLE_NODE,
+	ADD_END_NODE,
+	DEL_NODE,
+	DEL_AT_END
 };
 
 extern int _leftMargin;
@@ -82,6 +82,7 @@ extern int _rightMargin;
 extern int _tabSize;
 extern int _copySize;
 extern int _viewStart;
+extern long _oldFileSize;
 
 TEXT *createNodesFromBuffer(char *buffer, long fileSize);
 TEXT *createNewNode(int ch);
@@ -93,10 +94,11 @@ dataCopied getCopyStart(dataCopied cp_data, coordinates xy);
 dataCopied getCopyEnd(dataCopied cp_data, coordinates xy);
 char *saveCopiedText(TEXT *head, coordinates cp_start, coordinates cp_end);
 void pasteCopiedlist(TEXT **head, char *cpy_List, coordinates xy);
+void saveOnFileChange(TEXT *head, char *fileName);
 void save(TEXT *head, char *fileName);
-int getFileSizeFromList(TEXT *head);
-char *saveListToBuffer(TEXT *head, int size);
+long getFileSizeFromList(TEXT *head);
 char *newFileName(void);
+char *saveListToBuffer(TEXT *head, long fileSize);
 void deleteAllNodes(TEXT *head);
 void updateCoordinatesInView(TEXT **head);
 int countNewLines(TEXT *head);

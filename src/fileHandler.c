@@ -123,4 +123,5 @@ void startUp(int argc, char **argv)
 	TEXT *head = createNodesFromBuffer(buffer, fileSize);
 	freeBuffer(buffer);
 	editTextFile(head, argv[1]);
+	deleteAllNodes(head);
 }
