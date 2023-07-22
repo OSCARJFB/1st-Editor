@@ -741,19 +741,18 @@ TEXT *openFile(TEXT *head, char *fileName)
 	// Set assigned path as the file name. 
 	strcpy(fileName, path);
 
-	// Open the file at the location/path, then fetch the size of the file. 
-	FILE *fp = getFile(path); 
+	// Open the file and get its size.
+	FILE *fp = getFile(fileName); 
 	long fileSize = getFileSize(fp);
 
-	// Use the file size to allocate a buffer, loadfile data into the buffer. 
+	// Allocate a buffer and load the data from the file into the buffer.
 	char *buffer = allocateBuffer(fileSize);
 	loadBuffer(buffer, fp, fileSize); 
 
-	// At this stage we delete/free the previous list. 
-	deleteAllNodes(head); 
-
 	// Create a new list frm the buffer, when done free and return the new list.
+	deleteAllNodes(head); 
 	head = createNodesFromBuffer(buffer, fileSize);
+	
 	freeBuffer(buffer);
 	return head; 
 }

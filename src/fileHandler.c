@@ -26,7 +26,7 @@ FILE *getFileFromArg(int argc, char **argv)
 
 FILE *getFile(const char *path)
 {
-	FILE *fp = fopen(path, "a");
+	FILE *fp = fopen(path, "r");
 	if (fp == NULL)
 	{
 		return NULL;
