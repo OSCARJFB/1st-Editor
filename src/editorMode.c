@@ -10,6 +10,9 @@
 
 int _leftMargin = MARGIN_SPACE_3;
 int _rightMargin = 0;
+int _topMargin = 0;
+int _bottomMargin = 0;
+
 int _tabSize = 6;
 int _copySize = 0;
 int _viewStart = 0;
@@ -132,13 +135,13 @@ void saveOnFileChange(TEXT *head, char *fileName)
 	{
 		return;
 	}
-	
+
 	wclear(stdscr);
 	printw("%s have been modified, would you like to save? (Y/N)", fileName);
 	int ch = wgetch(stdscr);
-	if(ch == 'y' || ch == 'Y')
+	if (ch == 'y' || ch == 'Y')
 	{
-		if(fileName == NULL)
+		if (fileName == NULL)
 		{
 			fileName = newFileName();
 		}
@@ -679,6 +682,27 @@ int setMode(int ch)
 	return EDIT;
 }
 
+void setRightMargin(int y, TEXT *head)
+{
+	if(head == NULL)
+	{
+		return; 
+	}
+
+	for (TEXT *node = head; node->next != NULL; node = node->next)
+	{
+		if (node->y == y)
+		{
+			_rightMargin = node->x + 1;
+			if (node->next->y > y)
+			{
+				break;
+			}
+		}
+	}
+	_rightMargin = _rightMargin < _leftMargin ? _leftMargin : _rightMargin;
+}
+
 coordinates moveArrowKeys(int ch, coordinates xy)
 {
 	switch (ch)
@@ -693,7 +717,7 @@ coordinates moveArrowKeys(int ch, coordinates xy)
 		xy.x += xy.x != _leftMargin ? -1 : 0;
 		break;
 	case KEY_RIGHT:
-		++xy.x;
+		xy.x += xy.x <= _rightMargin ? 1 : 0;
 		break;
 	}
 
@@ -823,6 +847,7 @@ void editTextFile(TEXT *head, char *fileName)
 
 		updateViewPort(xy, ch);
 		setLeftMargin(head);
+		setRightMargin(xy.y, head);
 		updateCoordinatesInView(&head);
 		printNodes(head);
 		wmove(stdscr, xy.y, xy.x);
