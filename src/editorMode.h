@@ -105,7 +105,7 @@ int countNewLines(TEXT *head);
 void printNodes(TEXT *head);
 int setMode(int ch);
 void setLeftMargin(TEXT *head);
-void setRightMargin(int y, TEXT *head);
+void setRightMargin(int y, int ch, TEXT *head);
 coordinates moveArrowKeys(int ch, coordinates xy);
 coordinates edit(TEXT **head, coordinates xy, int ch);
 dataCopied copy(dataCopied cpy_data, TEXT *head, coordinates xy);

@@ -683,14 +683,26 @@ int setMode(int ch)
 	return EDIT;
 }
 
-void setRightMargin(int y, TEXT *head)
+void setRightMargin(int y, int ch, TEXT *head)
 {
+	// Base for margin.
 	_rightMargin = _leftMargin; 
 	if(head == NULL)
 	{
 		return; 
 	}
 
+	// Calculate on next line if key up or key down.
+	if(ch == KEY_UP)
+	{
+		y += y != _topMargin ? -1 : 0;
+	}
+	else if(ch == KEY_DOWN)
+	{
+		y += y <= _bottomMargin ? 1 : 0;
+	}
+
+	// Find the correct line, then set the x coordinate as right margin.
 	for (TEXT *node = head; node->next != NULL; node = node->next)
 	{
 		if (node->y == y && node->ch != '\n')
@@ -711,9 +723,11 @@ coordinates moveArrowKeys(int ch, coordinates xy)
 	{
 	case KEY_UP:
 		xy.y += xy.y != _topMargin ? -1 : 0;
+		xy.x = xy.x > _rightMargin ? _rightMargin : xy.x; 
 		break;
 	case KEY_DOWN:
 		xy.y += xy.y <= _bottomMargin ? 1 : 0; 
+		xy.x = xy.x > _rightMargin ? _rightMargin : xy.x; 
 		break;
 	case KEY_LEFT:
 		xy.x += xy.x != _leftMargin ? -1 : 0;
@@ -845,8 +859,8 @@ void editTextFile(TEXT *head, char *fileName)
 		}
 
 		updateViewPort(xy, ch);
-		setRightMargin(xy.y, head);
 		setLeftMargin(head);
+		setRightMargin(xy.y, ch, head);
 		xy = moveArrowKeys(ch, xy);
 		
 		updateCoordinatesInView(&head);
