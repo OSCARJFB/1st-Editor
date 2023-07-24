@@ -10,6 +10,9 @@
 
 int _leftMargin = MARGIN_SPACE_3;
 int _rightMargin = 0;
+int _topMargin = 0;
+int _bottomMargin = 0;
+
 int _tabSize = 6;
 int _copySize = 0;
 int _viewStart = 0;
@@ -132,13 +135,13 @@ void saveOnFileChange(TEXT *head, char *fileName)
 	{
 		return;
 	}
-	
+
 	wclear(stdscr);
 	printw("%s have been modified, would you like to save? (Y/N)", fileName);
 	int ch = wgetch(stdscr);
-	if(ch == 'y' || ch == 'Y')
+	if (ch == 'y' || ch == 'Y')
 	{
-		if(fileName == NULL)
+		if (fileName == NULL)
 		{
 			fileName = newFileName();
 		}
@@ -416,6 +419,7 @@ void updateCoordinatesInView(TEXT **head)
 	{
 		if (newLines >= _viewStart)
 		{
+			_bottomMargin = node->y; 
 			node->x = x;
 			node->y = y;
 
@@ -679,21 +683,57 @@ int setMode(int ch)
 	return EDIT;
 }
 
+void setRightMargin(int y, int ch, TEXT *head)
+{
+	// Base for margin.
+	_rightMargin = _leftMargin; 
+	if(head == NULL)
+	{
+		return; 
+	}
+
+	// Calculate on next line if key up or key down.
+	if(ch == KEY_UP)
+	{
+		y += y != _topMargin ? -1 : 0;
+	}
+	else if(ch == KEY_DOWN)
+	{
+		y += y <= _bottomMargin ? 1 : 0;
+	}
+
+	// Find the correct line, then set the x coordinate as right margin.
+	for (TEXT *node = head; node->next != NULL; node = node->next)
+	{
+		if (node->y == y && node->ch != '\n')
+		{
+			_rightMargin = node->next->ch == '\n' ? node->x + 1 : node->x + 2;
+		}
+
+		if (node->next->y > y)
+		{
+			break;
+		}
+	}
+}
+
 coordinates moveArrowKeys(int ch, coordinates xy)
 {
 	switch (ch)
 	{
 	case KEY_UP:
-		xy.y += xy.y != 0 ? -1 : 0;
+		xy.y += xy.y != _topMargin ? -1 : 0;
+		xy.x = xy.x > _rightMargin ? _rightMargin : xy.x; 
 		break;
 	case KEY_DOWN:
-		++xy.y;
+		xy.y += xy.y <= _bottomMargin ? 1 : 0; 
+		xy.x = xy.x > _rightMargin ? _rightMargin : xy.x; 
 		break;
 	case KEY_LEFT:
 		xy.x += xy.x != _leftMargin ? -1 : 0;
 		break;
 	case KEY_RIGHT:
-		++xy.x;
+		xy.x += xy.x < _rightMargin ? 1 : 0;
 		break;
 	}
 
@@ -795,10 +835,7 @@ void editTextFile(TEXT *head, char *fileName)
 
 	for (int ch = 0, is_running = true; is_running; ch = wgetch(stdscr))
 	{
-		int mode = setMode(ch);
-		xy = moveArrowKeys(ch, xy);
-
-		switch (mode)
+		switch (setMode(ch))
 		{
 		case EDIT:
 			xy = edit(&head, xy, ch);
@@ -823,6 +860,9 @@ void editTextFile(TEXT *head, char *fileName)
 
 		updateViewPort(xy, ch);
 		setLeftMargin(head);
+		setRightMargin(xy.y, ch, head);
+		xy = moveArrowKeys(ch, xy);
+		
 		updateCoordinatesInView(&head);
 		printNodes(head);
 		wmove(stdscr, xy.y, xy.x);
