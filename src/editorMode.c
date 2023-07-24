@@ -419,6 +419,7 @@ void updateCoordinatesInView(TEXT **head)
 	{
 		if (newLines >= _viewStart)
 		{
+			_bottomMargin = node->y; 
 			node->x = x;
 			node->y = y;
 
@@ -684,6 +685,7 @@ int setMode(int ch)
 
 void setRightMargin(int y, TEXT *head)
 {
+	_rightMargin = _leftMargin; 
 	if(head == NULL)
 	{
 		return; 
@@ -691,16 +693,16 @@ void setRightMargin(int y, TEXT *head)
 
 	for (TEXT *node = head; node->next != NULL; node = node->next)
 	{
-		if (node->y == y)
+		if (node->y == y && node->ch != '\n')
 		{
 			_rightMargin = node->x + 1;
-			if (node->next->y > y)
-			{
-				break;
-			}
+		}
+
+		if (node->next->y > y)
+		{
+			break;
 		}
 	}
-	_rightMargin = _rightMargin < _leftMargin ? _leftMargin : _rightMargin;
 }
 
 coordinates moveArrowKeys(int ch, coordinates xy)
@@ -708,16 +710,16 @@ coordinates moveArrowKeys(int ch, coordinates xy)
 	switch (ch)
 	{
 	case KEY_UP:
-		xy.y += xy.y != 0 ? -1 : 0;
+		xy.y += xy.y != _topMargin ? -1 : 0;
 		break;
 	case KEY_DOWN:
-		++xy.y;
+		xy.y += xy.y <= _bottomMargin ? 1 : 0; 
 		break;
 	case KEY_LEFT:
 		xy.x += xy.x != _leftMargin ? -1 : 0;
 		break;
 	case KEY_RIGHT:
-		xy.x += xy.x <= _rightMargin ? 1 : 0;
+		xy.x += xy.x < _rightMargin ? 1 : 0;
 		break;
 	}
 
@@ -819,10 +821,7 @@ void editTextFile(TEXT *head, char *fileName)
 
 	for (int ch = 0, is_running = true; is_running; ch = wgetch(stdscr))
 	{
-		int mode = setMode(ch);
-		xy = moveArrowKeys(ch, xy);
-
-		switch (mode)
+		switch (setMode(ch))
 		{
 		case EDIT:
 			xy = edit(&head, xy, ch);
@@ -845,9 +844,12 @@ void editTextFile(TEXT *head, char *fileName)
 			break;
 		}
 
-		updateViewPort(xy, ch);
-		setLeftMargin(head);
+		//updateViewPort(xy, ch);
+
 		setRightMargin(xy.y, head);
+		setLeftMargin(head);
+		xy = moveArrowKeys(ch, xy);
+		
 		updateCoordinatesInView(&head);
 		printNodes(head);
 		wmove(stdscr, xy.y, xy.x);
