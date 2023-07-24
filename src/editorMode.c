@@ -695,7 +695,7 @@ void setRightMargin(int y, TEXT *head)
 	{
 		if (node->y == y && node->ch != '\n')
 		{
-			_rightMargin = node->x + 1;
+			_rightMargin = node->next->ch == '\n' ? node->x + 1 : node->x + 2;
 		}
 
 		if (node->next->y > y)
@@ -844,8 +844,7 @@ void editTextFile(TEXT *head, char *fileName)
 			break;
 		}
 
-		//updateViewPort(xy, ch);
-
+		updateViewPort(xy, ch);
 		setRightMargin(xy.y, head);
 		setLeftMargin(head);
 		xy = moveArrowKeys(ch, xy);
