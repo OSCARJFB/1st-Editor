@@ -8,11 +8,7 @@
 
 #include "editorMode.h"
 
-int _leftMargin = MARGIN_SPACE_3;
-int _rightMargin = 0;
-int _topMargin = 0;
-int _bottomMargin = 0;
-
+textMargins margins = {MARGIN_SPACE_2, 0, 0, 0}; 
 int _tabSize = 6;
 int _copySize = 0;
 int _viewStart = 0;
@@ -229,17 +225,17 @@ coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, TEXT *node)
 	switch (sFlag)
 	{
 	case ADD_FIRST_NODE:
-		xy.x = _leftMargin;
+		xy.x = margins.left;
 		xy.y += ch == '\n' ? 1 : 0;
 		xy.x += ch == '\t' ? _tabSize : 0;
 		break;
 	case ADD_MIDDLE_NODE:
-		xy.x = ch == '\n' ? _leftMargin : node->x + 1;
+		xy.x = ch == '\n' ? margins.left : node->x + 1;
 		xy.y += ch == '\n' ? 1 : 0;
 		xy.x += ch == '\t' ? _tabSize : 0;
 		break;
 	case ADD_END_NODE:
-		xy.x = ch == '\n' ? _leftMargin : node->ch == '\n' ? _leftMargin + 1
+		xy.x = ch == '\n' ? margins.left : node->ch == '\n' ? margins.left + 1
 														   : node->x + 2;
 		xy.y += ch == '\n' ? 1 : 0;
 		xy.x += ch == '\t' ? _tabSize : 0;
@@ -249,7 +245,7 @@ coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, TEXT *node)
 		xy.y = node->y;
 		break;
 	case DEL_AT_END:
-		xy.x = _leftMargin;
+		xy.x = margins.left;
 		xy.y = 0;
 		break;
 	}
@@ -309,7 +305,7 @@ coordinates addNode(TEXT **head, int ch, coordinates xy)
 coordinates deleteNode(TEXT **head, coordinates xy)
 {
 	// We can't free/delete a node which is NULL or if at end of coordinates.
-	if (*head == NULL || (xy.x == _leftMargin && xy.y == 0))
+	if (*head == NULL || (xy.x == margins.left && xy.y == 0))
 	{
 		return xy;
 	}
@@ -400,7 +396,7 @@ coordinates getEndNodeCoordinates(TEXT *head)
 	}
 	else
 	{
-		xy.x = _leftMargin;
+		xy.x = margins.left;
 		xy.y = 0;
 	}
 
@@ -414,12 +410,12 @@ void updateCoordinatesInView(TEXT **head)
 		return;
 	}
 
-	int x = _leftMargin, y = 0, newLines = 0;
+	int x = margins.left, y = 0, newLines = 0;
 	for (TEXT *node = *head; node != NULL; node = node->next)
 	{
 		if (newLines >= _viewStart)
 		{
-			_bottomMargin = node->y; 
+			margins.bottom = node->y; 
 			node->x = x;
 			node->y = y;
 
@@ -434,9 +430,14 @@ void updateCoordinatesInView(TEXT **head)
 
 			if (node->ch == '\n')
 			{
-				x = _leftMargin;
+				x = margins.left;
 				++y;
 			}
+		}
+
+		if(node->next == NULL && node->ch == '\n')
+		{
+			margins.bottom += margins.bottom < getmaxy(stdscr) ? 1 : 0;   
 		}
 
 		newLines += node->ch == '\n' ? 1 : 0;
@@ -593,23 +594,23 @@ void setLeftMargin(TEXT *head)
 	// Set margin depending on the amount of newlines
 	if (newLines < LIM_1)
 	{
-		_leftMargin = MARGIN_SPACE_3;
+		margins.left = MARGIN_SPACE_3;
 	}
 	else if (newLines < LIM_2)
 	{
-		_leftMargin = MARGIN_SPACE_4;
+		margins.left = MARGIN_SPACE_4;
 	}
 	else if (newLines < LIM_3)
 	{
-		_leftMargin = MARGIN_SPACE_5;
+		margins.left = MARGIN_SPACE_5;
 	}
 	else if (newLines < LIM_4)
 	{
-		_leftMargin = MARGIN_SPACE_6;
+		margins.left = MARGIN_SPACE_6;
 	}
 }
 
-void printNodes(TEXT *head)
+void printText(TEXT *head, coordinates xy)
 {
 	int lineNumber = 0;
 	bool nlFlag = true;
@@ -655,6 +656,7 @@ void printNodes(TEXT *head)
 		printw("%d:", lineNumber + 1);
 	}
 
+	wmove(stdscr, xy.y, xy.x);
 	wrefresh(stdscr);
 }
 
@@ -686,7 +688,7 @@ int setMode(int ch)
 void setRightMargin(int y, int ch, TEXT *head)
 {
 	// Base for margin.
-	_rightMargin = _leftMargin; 
+	margins.right = margins.left; 
 	if(head == NULL)
 	{
 		return; 
@@ -695,11 +697,11 @@ void setRightMargin(int y, int ch, TEXT *head)
 	// Calculate on next line if key up or key down.
 	if(ch == KEY_UP)
 	{
-		y += y != _topMargin ? -1 : 0;
+		y += y != margins.top ? -1 : 0;
 	}
 	else if(ch == KEY_DOWN)
 	{
-		y += y <= _bottomMargin ? 1 : 0;
+		y += y <= margins.bottom ? 1 : 0;
 	}
 
 	// Find the correct line, then set the x coordinate as right margin.
@@ -707,7 +709,7 @@ void setRightMargin(int y, int ch, TEXT *head)
 	{
 		if (node->y == y && node->ch != '\n')
 		{
-			_rightMargin = node->next->ch == '\n' ? node->x + 1 : node->x + 2;
+			margins.right = node->next->ch == '\n' ? node->x + 1 : node->x + 2;
 		}
 
 		if (node->next->y > y)
@@ -722,18 +724,18 @@ coordinates moveArrowKeys(int ch, coordinates xy)
 	switch (ch)
 	{
 	case KEY_UP:
-		xy.y += xy.y != _topMargin ? -1 : 0;
-		xy.x = xy.x > _rightMargin ? _rightMargin : xy.x; 
+		xy.y += xy.y != margins.top ? -1 : 0;
+		xy.x = xy.x > margins.right ? margins.right : xy.x; 
 		break;
 	case KEY_DOWN:
-		xy.y += xy.y <= _bottomMargin ? 1 : 0; 
-		xy.x = xy.x > _rightMargin ? _rightMargin : xy.x; 
+		xy.y += xy.y != margins.bottom ? 1 : 0; 
+		xy.x = xy.x > margins.right ? margins.right : xy.x; 
 		break;
 	case KEY_LEFT:
-		xy.x += xy.x != _leftMargin ? -1 : 0;
+		xy.x += xy.x != margins.left ? -1 : 0;
 		break;
 	case KEY_RIGHT:
-		xy.x += xy.x < _rightMargin ? 1 : 0;
+		xy.x += xy.x < margins.right ? 1 : 0;
 		break;
 	}
 
@@ -776,17 +778,24 @@ dataCopied copy(dataCopied cpy_data, TEXT *head, coordinates xy)
 	return cpy_data;
 }
 
-void updateViewPort(coordinates xy, int ch)
+void updateViewPort(coordinates xy, int ch, int newLines)
 {
 	// Update view port of the text.
 	// This could be seen as some kind of paging making editing possible outside of terminal max xy,
 
-	if (xy.y >= getmaxy(stdscr) && (ch == '\n' || ch == KEY_DOWN))
+	if (newLines == getmaxy(stdscr) && ch == '\n')
 	{
 		++_viewStart;
 	}
-
-	if (xy.y == 0 && _viewStart > 0 && ch == KEY_UP)
+	else if(xy.y == getmaxy(stdscr) && ch == KEY_DOWN)
+	{
+		++_viewStart;
+	}
+	else if(xy.y == 0 && ch == KEY_BACKSPACE)
+	{
+		--_viewStart;
+	}
+	else if (xy.y == 0 && _viewStart > 0 && ch == KEY_UP)
 	{
 		--_viewStart;
 	}
@@ -830,9 +839,10 @@ void editTextFile(TEXT *head, char *fileName)
 {
 	dataCopied cpy_data = {NULL, {0, 0}, {0, 0}, false, false};
 	coordinates xy = getEndNodeCoordinates(head);
-	printNodes(head);
+	printText(head, xy);
 	_fileSize = getFileSizeFromList(head);
 
+	int newLines = 0; 
 	for (int ch = 0, is_running = true; is_running; ch = wgetch(stdscr))
 	{
 		switch (setMode(ch))
@@ -858,13 +868,15 @@ void editTextFile(TEXT *head, char *fileName)
 			break;
 		}
 
-		updateViewPort(xy, ch);
+		if(newLines < getmaxy(stdscr) && ch == '\n')
+		{
+			newLines = countNewLines(head);
+		}
+		updateViewPort(xy, ch, newLines);
 		setLeftMargin(head);
 		setRightMargin(xy.y, ch, head);
-		xy = moveArrowKeys(ch, xy);
-		
 		updateCoordinatesInView(&head);
-		printNodes(head);
-		wmove(stdscr, xy.y, xy.x);
+		xy = moveArrowKeys(ch, xy);
+		printText(head, xy);
 	}
 }

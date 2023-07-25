@@ -40,6 +40,11 @@ typedef struct dataCopied
 	bool isStart, isEnd;
 } dataCopied;
 
+typedef struct textMargins
+{
+	int left, right, top, bottom;
+} textMargins;
+
 enum lineLimit
 {
 	LIM_1 = 10,
@@ -64,25 +69,24 @@ enum mode
 	SAVE,
 	COPY,
 	PASTE,
-	OPEN_FILE, 
+	OPEN_FILE,
 	EXIT
 };
 
 enum state
 {
-	ADD_FIRST_NODE, 
+	ADD_FIRST_NODE,
 	ADD_MIDDLE_NODE,
 	ADD_END_NODE,
 	DEL_NODE,
 	DEL_AT_END
 };
 
-extern int _leftMargin;
-extern int _rightMargin;
+extern textMargins margins;
 extern int _tabSize;
 extern int _copySize;
 extern int _viewStart;
-extern long _oldFileSize;
+extern long _fileSize;
 
 TEXT *createNodesFromBuffer(char *buffer, long fileSize);
 TEXT *createNewNode(int ch);
@@ -102,7 +106,7 @@ char *saveListToBuffer(TEXT *head, long fileSize);
 void deleteAllNodes(TEXT *head);
 void updateCoordinatesInView(TEXT **head);
 int countNewLines(TEXT *head);
-void printNodes(TEXT *head);
+void printText(TEXT *head, coordinates xy);
 int setMode(int ch);
 void setLeftMargin(TEXT *head);
 void setRightMargin(int y, int ch, TEXT *head);

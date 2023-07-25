@@ -8,13 +8,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "curseSettings.h"
 #include "fileHandler.h"
 
 int main(int argc, char **argv)
 {
-	curseMode(true);
 	startUp(argc, argv);	
-	curseMode(false);
 	return 0;
 }
