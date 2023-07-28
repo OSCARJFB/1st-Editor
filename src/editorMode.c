@@ -221,9 +221,7 @@ TEXT *createNewNode(int ch)
 
 coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, TEXT *node)
 {
-	// Set cursor according to what type of edit was done.
-	// This is used both when deleting and adding to the list.
-
+	// Set cursor coordinates according to the type of editing having been done.
 	switch (sFlag)
 	{
 	case ADD_FIRST_NODE:
@@ -263,20 +261,21 @@ coordinates addNode(TEXT **headNode, int ch, coordinates xy)
 		*headNode = newNode;
 		return onEditCoordinates(xy, ADD_FIRST_NODE, ch, NULL);
 	}
-	
-	// Special case!
-	if((*headNode)->prev == NULL && (*headNode)->next == NULL && (*headNode)->ch == '\n')
+
+	// Special case, if a newline is the first character in the list!
+	if ((*headNode)->prev == NULL && (*headNode)->next == NULL &&
+		xy.y == _margins.top && (*headNode)->ch == '\n')
 	{
-		TEXT *node = *headNode; 
+		TEXT *node = *headNode;
 		node->prev = newNode;
 		*headNode = newNode;
 		newNode->next = node;
-		return xy;
+		return onEditCoordinates(xy, ADD_FIRST_NODE, ch, node);
 	}
 
 	while (node->next != NULL)
-	{	
-		// Add the node and set it as the new headNode of the list. 
+	{
+		// Add the node and set it as the new headNode of the list.
 		if (node->x == xy.x && node->y == xy.y && node->prev == NULL)
 		{
 			node->prev = newNode;
@@ -286,8 +285,8 @@ coordinates addNode(TEXT **headNode, int ch, coordinates xy)
 		}
 
 		node = node->next;
-		
-		// Add the node somewhere in the middle of the list. 
+
+		// Add the node somewhere in the middle of the list.
 		if (node->x == xy.x && node->y == xy.y && node->prev != NULL)
 		{
 			node->prev->next = newNode;
@@ -298,7 +297,7 @@ coordinates addNode(TEXT **headNode, int ch, coordinates xy)
 		}
 	}
 
-	// Add the node at the end of the list. 
+	// Add the node at the end of the list.
 	prevNode = node;
 	node->next = newNode;
 	newNode->prev = prevNode;
@@ -603,7 +602,7 @@ void printText(TEXT *headNode, coordinates xy)
 	clear();
 	for (TEXT *node = headNode; node != NULL; node = node->next)
 	{
-		if (lineNumber >= _viewStart)
+		if (lineNumber + 1 >= _viewStart)
 		{
 			if (nlFlag)
 			{
