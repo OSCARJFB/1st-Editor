@@ -8,10 +8,12 @@
 
 #include "editorMode.h"
 
-textMargins margins = {MARGIN_SPACE_2, 0, 0, 0};
+textMargins _margins = {MARGIN_SPACE_2, 0, 0, 0};
+bool _sigwinchFlag = false; 
 int _tabSize = 6;
 int _copySize = 0;
 int _viewStart = 0;
+int _view = 0;
 long _fileSize = 0;
 
 TEXT *createNodesFromBuffer(char *buffer, long fileSize)
@@ -225,17 +227,17 @@ coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, TEXT *node)
 	switch (sFlag)
 	{
 	case ADD_FIRST_NODE:
-		xy.x = ch == '\n' ? margins.left : margins.left + 1;
+		xy.x = ch == '\n' ? _margins.left : _margins.left + 1;
 		xy.y += ch == '\n' ? 1 : 0;
 		xy.x += ch == '\t' ? _tabSize : 0;
 		break;
 	case ADD_MIDDLE_NODE:
-		xy.x = ch == '\n' ? margins.left : node->x + 1;
+		xy.x = ch == '\n' ? _margins.left : node->x + 1;
 		xy.y += ch == '\n' ? 1 : 0;
 		xy.x += ch == '\t' ? _tabSize : 0;
 		break;
 	case ADD_END_NODE:
-		xy.x = ch == '\n' ? margins.left : node->ch == '\n' ? margins.left + 1
+		xy.x = ch == '\n' ? _margins.left : node->ch == '\n' ? _margins.left + 1
 															: node->x + 2;
 		xy.y += ch == '\n' ? 1 : 0;
 		xy.x += ch == '\t' ? _tabSize : 0;
@@ -245,7 +247,7 @@ coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, TEXT *node)
 		xy.y = node->y;
 		break;
 	case DEL_AT_END:
-		xy.x = margins.left;
+		xy.x = _margins.left;
 		xy.y = 0;
 		break;
 	}
@@ -268,15 +270,13 @@ coordinates addNode(TEXT **head, int ch, coordinates xy)
 
 	// Find the last node in the list, for each step check if ch was added in between list bounderies.
 	while (last_node->next != NULL)
-	{
+	{	
 		if (last_node->x == xy.x && last_node->y == xy.y && last_node->prev == NULL)
 		{
 			last_node->prev = next_node;
 			*head = next_node;
 			next_node->next = last_node;
-
-			xy = onEditCoordinates(xy, ADD_MIDDLE_NODE, ch, last_node);
-			return xy;
+			return onEditCoordinates(xy, ADD_MIDDLE_NODE, ch, last_node);
 		}
 
 		last_node = last_node->next;
@@ -287,9 +287,7 @@ coordinates addNode(TEXT **head, int ch, coordinates xy)
 			next_node->prev = last_node->prev;
 			last_node->prev = next_node;
 			next_node->next = last_node;
-
-			xy = onEditCoordinates(xy, ADD_MIDDLE_NODE, ch, last_node);
-			return xy;
+			return onEditCoordinates(xy, ADD_MIDDLE_NODE, ch, last_node);
 		}
 	}
 
@@ -297,15 +295,13 @@ coordinates addNode(TEXT **head, int ch, coordinates xy)
 	prev_node = last_node;
 	last_node->next = next_node;
 	next_node->prev = prev_node;
-
-	xy = onEditCoordinates(xy, ADD_END_NODE, ch, last_node);
-	return xy;
+	return onEditCoordinates(xy, ADD_END_NODE, ch, last_node);
 }
 
 coordinates deleteNode(TEXT **head, coordinates xy)
 {
 	// We can't free/delete a node which is NULL or if at end of coordinates.
-	if (*head == NULL || (xy.x == margins.left && xy.y == 0))
+	if (*head == NULL || (xy.x == _margins.left && xy.y == 0))
 	{
 		return xy;
 	}
@@ -380,8 +376,7 @@ coordinates getEndNodeCoordinates(TEXT *head)
 	coordinates xy = {0, 0};
 
 	// Will find the last node in viewport and set its x and y value to be the cursor position.
-	// for (int i = 0; head != NULL && i < getmaxy(stdscr); ++i)
-	for (int i = 0; head != NULL && i < 20; ++i)
+	for (int i = 0; head != NULL && i < _view; ++i)
 	{
 		if (head->next == NULL)
 		{
@@ -397,7 +392,7 @@ coordinates getEndNodeCoordinates(TEXT *head)
 	}
 	else
 	{
-		xy.x = margins.left;
+		xy.x = _margins.left;
 		xy.y = 0;
 	}
 
@@ -411,12 +406,11 @@ void updateCoordinatesInView(TEXT **head)
 		return;
 	}
 
-	int x = margins.left, y = 0, newLines = 0;
+	int x = _margins.left, y = 0, newLines = 0;
 	for (TEXT *node = *head; node != NULL; node = node->next)
 	{
 		if (newLines >= _viewStart)
 		{
-			// margins.bottom = node->y;
 			node->x = x;
 			node->y = y;
 
@@ -431,22 +425,13 @@ void updateCoordinatesInView(TEXT **head)
 
 			if (node->ch == '\n')
 			{
-				x = margins.left;
+				x = _margins.left;
 				++y;
 			}
 		}
 
-		/*
-		if (node->next == NULL && node->ch == '\n')
-		{
-			// margins.bottom += margins.bottom < getmaxy(stdscr) ? 1 : 0;
-			margins.bottom += margins.bottom < 20 ? 1 : 0;
-		}
-		*/
-
 		newLines += node->ch == '\n' ? 1 : 0;
-		// if (newLines >= getmaxy(stdscr) + _viewStart)
-		if (newLines >= 20 + _viewStart)
+		if (newLines >= _view + _viewStart)
 		{
 			break;
 		}
@@ -574,31 +559,13 @@ void pasteCopiedlist(TEXT **head, char *cpy_List, coordinates xy)
 	}
 }
 
-int countNewLinesWithLimit(TEXT *head)
+int countNewLinesInView(TEXT *head)
 {
 	int newlines = 0;
 
 	// Count all the newlines found in the text until max view in y axis is reached.
 	// while (head != NULL && newlines != getmaxy(stdscr))
-	while (head != NULL && newlines != 20)
-	{
-		if (head->ch == '\n')
-		{
-			++newlines;
-		}
-
-		head = head->next;
-	}
-
-	return newlines;
-}
-
-int countNewLines(TEXT *head)
-{
-	int newlines = 0;
-
-	// Count all the newlines found in the text.
-	while (head != NULL)
+	while (head != NULL && newlines != _view)
 	{
 		if (head->ch == '\n')
 		{
@@ -619,14 +586,14 @@ void printText(TEXT *head, coordinates xy)
 	// We need to clear terminal screen (empty) if no characters exists.
 	if (head == NULL)
 	{
-		wclear(stdscr);
+		clear();
 		printw("%d", lineNumber + 1);
-		wrefresh(stdscr);
+		refresh();
 		return;
 	}
 
 	// Print the nodes at x and y position.
-	wclear(stdscr);
+	clear();
 	for (TEXT *node = head; node != NULL; node = node->next)
 	{
 		if (lineNumber >= _viewStart)
@@ -636,7 +603,7 @@ void printText(TEXT *head, coordinates xy)
 				nlFlag = false;
 				printw("%d", lineNumber + 1);
 			}
-
+		
 			mvwaddch(stdscr, node->y, node->x, node->ch);
 		}
 
@@ -646,8 +613,7 @@ void printText(TEXT *head, coordinates xy)
 			++lineNumber;
 		}
 
-		// if (lineNumber >= getmaxy(stdscr) + _viewStart)
-		if (lineNumber >= 20 + _viewStart)
+		if (lineNumber == _view + _viewStart)
 		{
 			break;
 		}
@@ -658,8 +624,8 @@ void printText(TEXT *head, coordinates xy)
 		printw("%d", lineNumber + 1);
 	}
 
-	wmove(stdscr, xy.y, xy.x);
-	wrefresh(stdscr);
+	move(xy.y, xy.x);
+	refresh();
 }
 
 int setMode(int ch)
@@ -692,19 +658,19 @@ inline void setLeftMargin(int newLines)
 	// Set margin depending on the amount of newlines
 	if (newLines < LIM_1)
 	{
-		margins.left = MARGIN_SPACE_3;
+		_margins.left = MARGIN_SPACE_3;
 	}
 	else if (newLines < LIM_2)
 	{
-		margins.left = MARGIN_SPACE_4;
+		_margins.left = MARGIN_SPACE_4;
 	}
 	else if (newLines < LIM_3)
 	{
-		margins.left = MARGIN_SPACE_5;
+		_margins.left = MARGIN_SPACE_5;
 	}
 	else if (newLines < LIM_4)
 	{
-		margins.left = MARGIN_SPACE_6;
+		_margins.left = MARGIN_SPACE_6;
 	}
 }
 
@@ -714,11 +680,11 @@ inline void setRightMargin(int y, TEXT *node)
 	{
 		if (node->next != NULL)
 		{
-			margins.right = node->next->ch == '\n' ? node->x + 1 : node->x + 2;
+			_margins.right = node->next->ch == '\n' ? node->x + 1 : node->x + 2;
 		}
 		else
 		{
-			margins.right = node->x + 1;
+			_margins.right = node->x + 1;
 		}
 	}
 }
@@ -727,30 +693,30 @@ inline void setBottomMargin(int newLines, TEXT *node)
 {
 	if (newLines >= _viewStart)
 	{
-		margins.bottom = node->y;
+		_margins.bottom = node->y;
 	}
 
 	if (node->next == NULL && node->ch == '\n')
 	{
-		margins.bottom += margins.bottom < 20 ? 1 : 0;
+		_margins.bottom += _margins.bottom < _view ? 1 : 0;
 	}
 }
 
 void updateMargins(int y, int ch, TEXT *head)
 {
-	margins.right = margins.left;
+	_margins.right = _margins.left;
 	if (head == NULL)
 	{
 		return;
 	}
 
-	if(ch == KEY_UP)
+	if (ch == KEY_UP)
 	{
-		y += y != margins.top ? -1 : 0;
+		y += y != _margins.top ? -1 : 0;
 	}
-	else if(ch == KEY_DOWN)
+	else if (ch == KEY_DOWN)
 	{
-		y += y <= margins.bottom ? 1 : 0;
+		y += y <= _margins.bottom ? 1 : 0;
 	}
 
 	int newLines = 0;
@@ -765,7 +731,7 @@ void updateMargins(int y, int ch, TEXT *head)
 		setRightMargin(y, node);
 
 		newLines += node->ch == '\n' ? 1 : 0;
-		if (newLines >= 20 + _viewStart)
+		if (newLines >= _view + _viewStart)
 		{
 			break;
 		}
@@ -778,18 +744,18 @@ coordinates updateCursor(int ch, coordinates xy)
 	switch (ch)
 	{
 	case KEY_UP:
-		xy.y += xy.y > margins.top ? -1 : 0;
-		xy.x = xy.x > margins.right ? margins.right : xy.x;
+		xy.y += xy.y > _margins.top ? -1 : 0;
+		xy.x = xy.x > _margins.right ? _margins.right : xy.x;
 		break;
 	case KEY_DOWN:
-		xy.y += xy.y < margins.bottom ? 1 : 0;
-		xy.x = xy.x > margins.right ? margins.right : xy.x;
+		xy.y += xy.y < _margins.bottom ? 1 : 0;
+		xy.x = xy.x > _margins.right ? _margins.right : xy.x;
 		break;
 	case KEY_LEFT:
-		xy.x += xy.x > margins.left ? -1 : 0;
+		xy.x += xy.x > _margins.left ? -1 : 0;
 		break;
 	case KEY_RIGHT:
-		xy.x += xy.x < margins.right ? 1 : 0;
+		xy.x += xy.x < _margins.right ? 1 : 0;
 		break;
 	}
 
@@ -836,16 +802,16 @@ void updateViewPort(coordinates xy, int ch, int newLines)
 {
 	// Update view port of the text.
 	// This could be seen as some kind of paging making editing possible outside of terminal max xy,
-	
-	if (newLines == 20 && ch == '\n')
+
+	if (newLines == _view && ch == '\n')
 	{
 		++_viewStart;
 	}
-	else if (xy.y == 20 && newLines == 20 && ch == KEY_DOWN)
+	else if (xy.y == _view && newLines >= _view && ch == KEY_DOWN)
 	{
 		++_viewStart;
 	}
-	else if (newLines == 20 && ch == KEY_BACKSPACE)
+	else if (newLines == _view && ch == KEY_BACKSPACE)
 	{
 		--_viewStart;
 	}
@@ -891,12 +857,41 @@ TEXT *openFile(TEXT *head, char *fileName)
 
 inline int updateXYOnNewLine(coordinates xy, int ch, int newLines)
 {
-	if(ch == '\n' && newLines == 20)
+	if (ch == '\n' && newLines >= _view)
 	{
-		--xy.y; 
+		--xy.y;
 	}
 
-	return xy.y; 
+	return xy.y;
+}
+
+void handleSigwinch(int signal)
+{
+	// This will allow resizing of terminal window.
+	if(signal == SIGWINCH)
+	{
+		_sigwinchFlag = true;
+	}
+}
+
+coordinates resizeWinOnSigwinch(TEXT* head, coordinates xy)
+{	
+	// If true resize terminal, redraw the screen.
+	if(_sigwinchFlag)
+	{
+		endwin();
+		refresh(); 
+		initscr();
+		if(xy.y > getmaxy(stdscr))
+		{
+			xy.y = getmaxy(stdscr) - 1; 
+			xy.x = 0;  
+		}
+		_view = getmaxy(stdscr);
+		printText(head, xy); 
+		_sigwinchFlag = false;  
+	}
+	return xy; 
 }
 
 void editTextFile(TEXT *head, char *fileName)
@@ -905,8 +900,10 @@ void editTextFile(TEXT *head, char *fileName)
 	coordinates xy = getEndNodeCoordinates(head);
 	printText(head, xy);
 	_fileSize = getFileSizeFromList(head);
+	_view = getmaxy(stdscr); 
+	signal(SIGWINCH, handleSigwinch);
 
-	for (int ch = 0, is_running = true; is_running; ch = wgetch(stdscr))
+	for (int ch = 0, is_running = true; is_running; ch = getch())
 	{
 		switch (setMode(ch))
 		{
@@ -933,8 +930,9 @@ void editTextFile(TEXT *head, char *fileName)
 
 		updateMargins(xy.y, ch, head);
 		updateCoordinatesInView(&head);
-		updateViewPort(xy, ch, countNewLinesWithLimit(head));
-		xy.y = updateXYOnNewLine(xy, ch, countNewLinesWithLimit(head));
+		int newLines = countNewLinesInView(head); 
+		updateViewPort(xy, ch, newLines);
+		xy.y = updateXYOnNewLine(xy, ch, newLines);
 		xy = updateCursor(ch, xy);
 		printText(head, xy);
 	}

@@ -14,6 +14,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <ncurses.h>
+#include <signal.h>
 #include "fileHandler.h"
 
 #define ESC_KEY 27
@@ -82,10 +83,11 @@ enum state
 	DEL_AT_END
 };
 
-extern textMargins margins;
+extern textMargins _margins;
 extern int _tabSize;
 extern int _copySize;
 extern int _viewStart;
+extern int _view;
 extern long _fileSize;
 
 TEXT *createNodesFromBuffer(char *buffer, long fileSize);
@@ -106,19 +108,18 @@ char *saveListToBuffer(TEXT *head, long fileSize);
 void deleteAllNodes(TEXT *head);
 void updateCoordinatesInView(TEXT **head);
 int countNewLinesWithLimit(TEXT *head);
-int countNewLines(TEXT *head);
 void printText(TEXT *head, coordinates xy);
 int setMode(int ch);
-
 void setLeftMargin(int NewLines);
 void setRightMargin(int y, TEXT *head);
 void setBottomMargin(int y, TEXT *head);
 void updateMargins(int y, int ch, TEXT *head);
-
 int updateXYOnNewLine(coordinates xy, int ch, int newLines);
 coordinates updateCursor(int ch, coordinates xy);
 coordinates edit(TEXT **head, coordinates xy, int ch);
 dataCopied copy(dataCopied cpy_data, TEXT *head, coordinates xy);
+void handleSigwinch(int signal);
+coordinates resizeWinOnSigwinch(TEXT* head, coordinates xy);
 void editTextFile(TEXT *head, char *fileName);
 
 #endif // EDITORMODE_H
