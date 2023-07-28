@@ -108,6 +108,22 @@ void loadBuffer(char *buffer, FILE *fp, long fileSize)
 	};
 }
 
+void curseMode(bool isCurse)
+{
+	if (isCurse)
+	{
+		initscr();
+		cbreak();
+		noecho();
+		curs_set(1);
+		keypad(stdscr, TRUE);
+	}
+	else
+	{
+		endwin();
+	}
+}
+
 void startUp(int argc, char **argv)
 {
 	// Set the file pointer according to args provided. Check the size of the file provided. 
@@ -122,6 +138,9 @@ void startUp(int argc, char **argv)
 	// Load the buffer into a linked list, then free the buffer. 
 	TEXT *head = createNodesFromBuffer(buffer, fileSize);
 	freeBuffer(buffer);
+
+	curseMode(true);
 	editTextFile(head, argv[1]);
+	curseMode(false);
 	deleteAllNodes(head);
 }

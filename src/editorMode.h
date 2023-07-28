@@ -14,6 +14,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <ncurses.h>
+#include <signal.h>
 #include "fileHandler.h"
 
 #define ESC_KEY 27
@@ -40,6 +41,11 @@ typedef struct dataCopied
 	bool isStart, isEnd;
 } dataCopied;
 
+typedef struct textMargins
+{
+	int left, right, top, bottom;
+} textMargins;
+
 enum lineLimit
 {
 	LIM_1 = 10,
@@ -64,25 +70,25 @@ enum mode
 	SAVE,
 	COPY,
 	PASTE,
-	OPEN_FILE, 
+	OPEN_FILE,
 	EXIT
 };
 
 enum state
 {
-	ADD_FIRST_NODE, 
+	ADD_FIRST_NODE,
 	ADD_MIDDLE_NODE,
 	ADD_END_NODE,
 	DEL_NODE,
 	DEL_AT_END
 };
 
-extern int _leftMargin;
-extern int _rightMargin;
+extern textMargins _margins;
 extern int _tabSize;
 extern int _copySize;
 extern int _viewStart;
-extern long _oldFileSize;
+extern int _view;
+extern long _fileSize;
 
 TEXT *createNodesFromBuffer(char *buffer, long fileSize);
 TEXT *createNewNode(int ch);
@@ -101,14 +107,19 @@ char *newFileName(void);
 char *saveListToBuffer(TEXT *head, long fileSize);
 void deleteAllNodes(TEXT *head);
 void updateCoordinatesInView(TEXT **head);
-int countNewLines(TEXT *head);
-void printNodes(TEXT *head);
+int countNewLinesWithLimit(TEXT *head);
+void printText(TEXT *head, coordinates xy);
 int setMode(int ch);
-void setLeftMargin(TEXT *head);
-void setRightMargin(int y, int ch, TEXT *head);
-coordinates moveArrowKeys(int ch, coordinates xy);
+void setLeftMargin(int NewLines);
+void setRightMargin(int y, TEXT *head);
+void setBottomMargin(int y, TEXT *head);
+void updateMargins(int y, int ch, TEXT *head);
+int updateXYOnNewLine(coordinates xy, int ch, int newLines);
+coordinates updateCursor(int ch, coordinates xy);
 coordinates edit(TEXT **head, coordinates xy, int ch);
 dataCopied copy(dataCopied cpy_data, TEXT *head, coordinates xy);
+void handleSigwinch(int signal);
+coordinates resizeWinOnSigwinch(TEXT* head, coordinates xy);
 void editTextFile(TEXT *head, char *fileName);
 
 #endif // EDITORMODE_H

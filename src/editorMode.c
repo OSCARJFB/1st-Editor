@@ -8,14 +8,12 @@
 
 #include "editorMode.h"
 
-int _leftMargin = MARGIN_SPACE_3;
-int _rightMargin = 0;
-int _topMargin = 0;
-int _bottomMargin = 0;
-
+textMargins _margins = {MARGIN_SPACE_2, 0, 0, 0};
+bool _sigwinchFlag = false;
 int _tabSize = 6;
 int _copySize = 0;
 int _viewStart = 0;
+int _view = 0;
 long _fileSize = 0;
 
 TEXT *createNodesFromBuffer(char *buffer, long fileSize)
@@ -26,12 +24,12 @@ TEXT *createNodesFromBuffer(char *buffer, long fileSize)
 	}
 
 	coordinates xy = {0, 0};
-	TEXT *head = NULL;
+	TEXT *headNode = NULL;
 
 	// Add each character from the read file to the list.
 	for (int i = 0; i < fileSize; ++i)
 	{
-		addNode(&head, buffer[i], xy);
+		addNode(&headNode, buffer[i], xy);
 
 		if (buffer[i] == '\n')
 		{
@@ -43,17 +41,17 @@ TEXT *createNodesFromBuffer(char *buffer, long fileSize)
 		++xy.x;
 	}
 
-	updateCoordinatesInView(&head);
-	return head;
+	updateCoordinatesInView(&headNode);
+	return headNode;
 }
 
-long getFileSizeFromList(TEXT *head)
+long getFileSizeFromList(TEXT *headNode)
 {
 	long fileSize = 0;
-	for (long i = 0; head != NULL; ++i)
+	for (long i = 0; headNode != NULL; ++i)
 	{
-		head = head->next;
-		if (head->next == NULL)
+		headNode = headNode->next;
+		if (headNode->next == NULL)
 		{
 			fileSize = i + 1;
 			break;
@@ -63,11 +61,11 @@ long getFileSizeFromList(TEXT *head)
 	return fileSize;
 }
 
-void save(TEXT *head, char *fileName)
+void save(TEXT *headNode, char *fileName)
 {
 	FILE *fp = NULL;
-	_fileSize = getFileSizeFromList(head);
-	char *buffer = saveListToBuffer(head, _fileSize);
+	_fileSize = getFileSizeFromList(headNode);
+	char *buffer = saveListToBuffer(headNode, _fileSize);
 	if (buffer == NULL)
 	{
 		return;
@@ -105,7 +103,7 @@ void save(TEXT *head, char *fileName)
 	buffer = NULL;
 }
 
-char *saveListToBuffer(TEXT *head, long fileSize)
+char *saveListToBuffer(TEXT *headNode, long fileSize)
 {
 	if (fileSize == 0)
 	{
@@ -118,9 +116,9 @@ char *saveListToBuffer(TEXT *head, long fileSize)
 		return NULL;
 	}
 
-	for (int i = 0; head != NULL && i < fileSize; head = head->next)
+	for (int i = 0; headNode != NULL && i < fileSize; headNode = headNode->next)
 	{
-		buffer[i++] = head->ch;
+		buffer[i++] = headNode->ch;
 	}
 
 	buffer[fileSize] = '\0';
@@ -128,9 +126,9 @@ char *saveListToBuffer(TEXT *head, long fileSize)
 	return buffer;
 }
 
-void saveOnFileChange(TEXT *head, char *fileName)
+void saveOnFileChange(TEXT *headNode, char *fileName)
 {
-	long currentFileSize = getFileSizeFromList(head);
+	long currentFileSize = getFileSizeFromList(headNode);
 	if (currentFileSize == _fileSize)
 	{
 		return;
@@ -146,7 +144,7 @@ void saveOnFileChange(TEXT *head, char *fileName)
 			fileName = newFileName();
 		}
 
-		save(head, fileName);
+		save(headNode, fileName);
 	}
 	wrefresh(stdscr);
 }
@@ -187,60 +185,58 @@ char *newFileName(void)
 	return fileName;
 }
 
-void deleteAllNodes(TEXT *head)
+void deleteAllNodes(TEXT *headNode)
 {
-	if (head == NULL)
+	if (headNode == NULL)
 	{
 		return;
 	}
 
 	// Delete and free every single node.
 	TEXT *temp = NULL;
-	while (head != NULL)
+	while (headNode != NULL)
 	{
-		temp = head;
-		head = head->next;
+		temp = headNode;
+		headNode = headNode->next;
 		free(temp);
 	}
 
 	temp = NULL;
-	head = NULL;
+	headNode = NULL;
 }
 
 TEXT *createNewNode(int ch)
 {
-	TEXT *next_node = malloc(sizeof(TEXT));
-	if (next_node == NULL)
+	TEXT *newNode = malloc(sizeof(TEXT));
+	if (newNode == NULL)
 	{
 		return NULL;
 	}
 
-	next_node->ch = ch;
-	next_node->next = NULL;
-	next_node->prev = NULL;
-	return next_node;
+	newNode->ch = ch;
+	newNode->next = NULL;
+	newNode->prev = NULL;
+	return newNode;
 }
 
 coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, TEXT *node)
 {
-	// Set cursor according to what type of edit was done.
-	// This is used both when deleting and adding to the list.
-
+	// Set cursor coordinates according to the type of editing having been done.
 	switch (sFlag)
 	{
 	case ADD_FIRST_NODE:
-		xy.x = _leftMargin;
+		xy.x = ch == '\n' ? _margins.left : _margins.left + 1;
 		xy.y += ch == '\n' ? 1 : 0;
 		xy.x += ch == '\t' ? _tabSize : 0;
 		break;
 	case ADD_MIDDLE_NODE:
-		xy.x = ch == '\n' ? _leftMargin : node->x + 1;
+		xy.x = ch == '\n' ? _margins.left : node->x + 1;
 		xy.y += ch == '\n' ? 1 : 0;
 		xy.x += ch == '\t' ? _tabSize : 0;
 		break;
 	case ADD_END_NODE:
-		xy.x = ch == '\n' ? _leftMargin : node->ch == '\n' ? _leftMargin + 1
-														   : node->x + 2;
+		xy.x = ch == '\n' ? _margins.left : node->ch == '\n' ? _margins.left + 1
+															 : node->x + 2;
 		xy.y += ch == '\n' ? 1 : 0;
 		xy.x += ch == '\t' ? _tabSize : 0;
 		break;
@@ -249,7 +245,7 @@ coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, TEXT *node)
 		xy.y = node->y;
 		break;
 	case DEL_AT_END:
-		xy.x = _leftMargin;
+		xy.x = _margins.left;
 		xy.y = 0;
 		break;
 	}
@@ -257,65 +253,67 @@ coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, TEXT *node)
 	return xy;
 }
 
-coordinates addNode(TEXT **head, int ch, coordinates xy)
+coordinates addNode(TEXT **headNode, int ch, coordinates xy)
 {
-	// Currently there is no list existing.
-	if (*head == NULL)
+	TEXT *newNode = createNewNode(ch), *node = *headNode, *prevNode = NULL;
+	if (*headNode == NULL)
 	{
-		*head = createNewNode(ch);
-		xy = onEditCoordinates(xy, ADD_FIRST_NODE, ch, NULL);
-		return xy;
+		*headNode = newNode;
+		return onEditCoordinates(xy, ADD_FIRST_NODE, ch, NULL);
 	}
 
-	// Create a new node and add base values, depending on parameter input.
-	TEXT *next_node = createNewNode(ch), *last_node = *head, *prev_node = NULL;
-
-	// Find the last node in the list, for each step check if ch was added in between list bounderies.
-	while (last_node->next != NULL)
+	// Special case, if a newline is the first character in the list!
+	if ((*headNode)->prev == NULL && (*headNode)->next == NULL &&
+		xy.y == _margins.top && (*headNode)->ch == '\n')
 	{
-		if (last_node->x == xy.x && last_node->y == xy.y && last_node->prev == NULL)
-		{
-			last_node->prev = next_node;
-			*head = next_node;
-			next_node->next = last_node;
+		TEXT *node = *headNode;
+		node->prev = newNode;
+		*headNode = newNode;
+		newNode->next = node;
+		return onEditCoordinates(xy, ADD_FIRST_NODE, ch, node);
+	}
 
-			xy = onEditCoordinates(xy, ADD_MIDDLE_NODE, ch, last_node);
-			return xy;
+	while (node->next != NULL)
+	{
+		// Add the node and set it as the new headNode of the list.
+		if (node->x == xy.x && node->y == xy.y && node->prev == NULL)
+		{
+			node->prev = newNode;
+			*headNode = newNode;
+			newNode->next = node;
+			return onEditCoordinates(xy, ADD_FIRST_NODE, ch, node);
 		}
 
-		last_node = last_node->next;
+		node = node->next;
 
-		if (last_node->x == xy.x && last_node->y == xy.y && last_node->prev != NULL)
+		// Add the node somewhere in the middle of the list.
+		if (node->x == xy.x && node->y == xy.y && node->prev != NULL)
 		{
-			last_node->prev->next = next_node;
-			next_node->prev = last_node->prev;
-			last_node->prev = next_node;
-			next_node->next = last_node;
-
-			xy = onEditCoordinates(xy, ADD_MIDDLE_NODE, ch, last_node);
-			return xy;
+			node->prev->next = newNode;
+			newNode->prev = node->prev;
+			node->prev = newNode;
+			newNode->next = node;
+			return onEditCoordinates(xy, ADD_MIDDLE_NODE, ch, node);
 		}
 	}
 
-	// Add the node at the end since ch was not added within the bounderies of the list.
-	prev_node = last_node;
-	last_node->next = next_node;
-	next_node->prev = prev_node;
-
-	xy = onEditCoordinates(xy, ADD_END_NODE, ch, last_node);
-	return xy;
+	// Add the node at the end of the list.
+	prevNode = node;
+	node->next = newNode;
+	newNode->prev = prevNode;
+	return onEditCoordinates(xy, ADD_END_NODE, ch, node);
 }
 
-coordinates deleteNode(TEXT **head, coordinates xy)
+coordinates deleteNode(TEXT **headNode, coordinates xy)
 {
 	// We can't free/delete a node which is NULL or if at end of coordinates.
-	if (*head == NULL || (xy.x == _leftMargin && xy.y == 0))
+	if (*headNode == NULL || (xy.x == _margins.left && xy.y == 0))
 	{
 		return xy;
 	}
 
 	bool isEndNode = true;
-	TEXT *del_node = *head, *temp_node = NULL;
+	TEXT *del_node = *headNode, *temp_node = NULL;
 
 	// Find the node to be deleted.
 	while (del_node->next != NULL)
@@ -342,8 +340,8 @@ coordinates deleteNode(TEXT **head, coordinates xy)
 	if (del_node->prev == NULL && del_node->next == NULL)
 	{
 		xy = onEditCoordinates(xy, DEL_AT_END, 0, NULL);
-		free(*head);
-		*head = NULL;
+		free(*headNode);
+		*headNode = NULL;
 		return xy;
 	}
 
@@ -364,7 +362,7 @@ coordinates deleteNode(TEXT **head, coordinates xy)
 		else if (del_node->prev == NULL && del_node->next != NULL)
 		{
 			temp_node->next->prev = NULL;
-			*head = temp_node->next;
+			*headNode = temp_node->next;
 		}
 	}
 
@@ -378,48 +376,47 @@ coordinates deleteNode(TEXT **head, coordinates xy)
 	return xy;
 }
 
-coordinates getEndNodeCoordinates(TEXT *head)
+coordinates getEndNodeCoordinates(TEXT *headNode)
 {
-	updateCoordinatesInView(&head);
+	updateCoordinatesInView(&headNode);
 	coordinates xy = {0, 0};
 
 	// Will find the last node in viewport and set its x and y value to be the cursor position.
-	for (int i = 0; head != NULL && i < getmaxy(stdscr); ++i)
+	for (int i = 0; headNode != NULL && i < _view; ++i)
 	{
-		if (head->next == NULL)
+		if (headNode->next == NULL)
 		{
 			break;
 		}
-		head = head->next;
+		headNode = headNode->next;
 	}
 
-	if (head != NULL)
+	if (headNode != NULL)
 	{
-		xy.x = head->x + 1;
-		xy.y = head->y;
+		xy.x = headNode->x + 1;
+		xy.y = headNode->y;
 	}
 	else
 	{
-		xy.x = _leftMargin;
+		xy.x = _margins.left;
 		xy.y = 0;
 	}
 
 	return xy;
 }
 
-void updateCoordinatesInView(TEXT **head)
+void updateCoordinatesInView(TEXT **headNode)
 {
-	if (*head == NULL)
+	if (*headNode == NULL)
 	{
 		return;
 	}
 
-	int x = _leftMargin, y = 0, newLines = 0;
-	for (TEXT *node = *head; node != NULL; node = node->next)
+	int x = _margins.left, y = 0, newLines = 0;
+	for (TEXT *node = *headNode; node != NULL; node = node->next)
 	{
 		if (newLines >= _viewStart)
 		{
-			_bottomMargin = node->y; 
 			node->x = x;
 			node->y = y;
 
@@ -434,13 +431,13 @@ void updateCoordinatesInView(TEXT **head)
 
 			if (node->ch == '\n')
 			{
-				x = _leftMargin;
+				x = _margins.left;
 				++y;
 			}
 		}
 
 		newLines += node->ch == '\n' ? 1 : 0;
-		if (newLines >= getmaxy(stdscr) + _viewStart)
+		if (newLines >= _view + _viewStart)
 		{
 			break;
 		}
@@ -478,7 +475,7 @@ dataCopied getCopyEnd(dataCopied cpy_data, coordinates xy)
 	return cpy_data;
 }
 
-char *saveCopiedText(TEXT *head, coordinates cpy_start, coordinates cpy_end)
+char *saveCopiedText(TEXT *headNode, coordinates cpy_start, coordinates cpy_end)
 {
 	char *cpy_List = NULL;
 	int i = 0;
@@ -491,10 +488,10 @@ char *saveCopiedText(TEXT *head, coordinates cpy_start, coordinates cpy_end)
 		cpy_end = temp;
 	}
 
-	while (head != NULL)
+	while (headNode != NULL)
 	{
 		// Start were copy point is found, add every node until the end of the list is found.
-		if (((head->x == cpy_start.x && head->y == cpy_start.y) || start_found))
+		if (((headNode->x == cpy_start.x && headNode->y == cpy_start.y) || start_found))
 		{
 			if (cpy_List == NULL)
 			{
@@ -509,32 +506,32 @@ char *saveCopiedText(TEXT *head, coordinates cpy_start, coordinates cpy_end)
 
 			if (i < CPY_BUFFER_SIZE)
 			{
-				cpy_List[i++] = head->ch;
+				cpy_List[i++] = headNode->ch;
 			}
 		}
 
 		// If true end of list is found.
-		if (head->x == cpy_end.x && head->y == cpy_end.y)
+		if (headNode->x == cpy_end.x && headNode->y == cpy_end.y)
 		{
 			_copySize = i;
 			break;
 		}
 
-		head = head->next;
+		headNode = headNode->next;
 	}
 
 	return cpy_List;
 }
 
-void pasteCopiedlist(TEXT **head, char *cpy_List, coordinates xy)
+void pasteCopiedlist(TEXT **headNode, char *cpy_List, coordinates xy)
 {
-	if (*head == NULL || cpy_List == NULL)
+	if (*headNode == NULL || cpy_List == NULL)
 	{
 		return;
 	}
 
 	// First find the paste start location should.
-	TEXT *preList = *head;
+	TEXT *preList = *headNode;
 	for (; preList->next != NULL; preList = preList->next)
 	{
 		if (preList->x == xy.x && preList->y == xy.y)
@@ -568,71 +565,49 @@ void pasteCopiedlist(TEXT **head, char *cpy_List, coordinates xy)
 	}
 }
 
-int countNewLines(TEXT *head)
+int countNewLinesInView(TEXT *headNode)
 {
 	int newlines = 0;
 
-	// Count all the newlines found in the text.
-	while (head != NULL)
+	// Count all the newlines found in the text until max view in y axis is reached.
+	// while (headNode != NULL && newlines != getmaxy(stdscr))
+	while (headNode != NULL && newlines != _view)
 	{
-		if (head->ch == '\n')
+		if (headNode->ch == '\n')
 		{
 			++newlines;
 		}
 
-		head = head->next;
+		headNode = headNode->next;
 	}
 
 	return newlines;
 }
 
-void setLeftMargin(TEXT *head)
-{
-	int newLines = countNewLines(head);
-
-	// Set margin depending on the amount of newlines
-	if (newLines < LIM_1)
-	{
-		_leftMargin = MARGIN_SPACE_3;
-	}
-	else if (newLines < LIM_2)
-	{
-		_leftMargin = MARGIN_SPACE_4;
-	}
-	else if (newLines < LIM_3)
-	{
-		_leftMargin = MARGIN_SPACE_5;
-	}
-	else if (newLines < LIM_4)
-	{
-		_leftMargin = MARGIN_SPACE_6;
-	}
-}
-
-void printNodes(TEXT *head)
+void printText(TEXT *headNode, coordinates xy)
 {
 	int lineNumber = 0;
 	bool nlFlag = true;
 
 	// We need to clear terminal screen (empty) if no characters exists.
-	if (head == NULL)
+	if (headNode == NULL)
 	{
-		wclear(stdscr);
-		printw("%d:", lineNumber + 1);
-		wrefresh(stdscr);
+		clear();
+		printw("%d", lineNumber + 1);
+		refresh();
 		return;
 	}
 
 	// Print the nodes at x and y position.
-	wclear(stdscr);
-	for (TEXT *node = head; node != NULL; node = node->next)
+	clear();
+	for (TEXT *node = headNode; node != NULL; node = node->next)
 	{
-		if (lineNumber >= _viewStart)
+		if (lineNumber + 1 >= _viewStart)
 		{
 			if (nlFlag)
 			{
 				nlFlag = false;
-				printw("%d:", lineNumber + 1);
+				printw("%d", lineNumber + 1);
 			}
 
 			mvwaddch(stdscr, node->y, node->x, node->ch);
@@ -644,7 +619,7 @@ void printNodes(TEXT *head)
 			++lineNumber;
 		}
 
-		if (lineNumber >= getmaxy(stdscr) + _viewStart)
+		if (lineNumber == _view + _viewStart)
 		{
 			break;
 		}
@@ -652,10 +627,11 @@ void printNodes(TEXT *head)
 
 	if (nlFlag)
 	{
-		printw("%d:", lineNumber + 1);
+		printw("%d", lineNumber + 1);
 	}
 
-	wrefresh(stdscr);
+	move(xy.y, xy.x);
+	refresh();
 }
 
 int setMode(int ch)
@@ -683,81 +659,133 @@ int setMode(int ch)
 	return EDIT;
 }
 
-void setRightMargin(int y, int ch, TEXT *head)
+inline void setLeftMargin(int newLines)
 {
-	// Base for margin.
-	_rightMargin = _leftMargin; 
-	if(head == NULL)
+	// Set margin depending on the amount of newlines
+	if (newLines < LIM_1)
 	{
-		return; 
+		_margins.left = MARGIN_SPACE_3;
 	}
+	else if (newLines < LIM_2)
+	{
+		_margins.left = MARGIN_SPACE_4;
+	}
+	else if (newLines < LIM_3)
+	{
+		_margins.left = MARGIN_SPACE_5;
+	}
+	else if (newLines < LIM_4)
+	{
+		_margins.left = MARGIN_SPACE_6;
+	}
+}
 
-	// Calculate on next line if key up or key down.
-	if(ch == KEY_UP)
+inline void setRightMargin(int y, TEXT *node)
+{
+	if (node->y == y && node->ch != '\n')
 	{
-		y += y != _topMargin ? -1 : 0;
-	}
-	else if(ch == KEY_DOWN)
-	{
-		y += y <= _bottomMargin ? 1 : 0;
-	}
-
-	// Find the correct line, then set the x coordinate as right margin.
-	for (TEXT *node = head; node->next != NULL; node = node->next)
-	{
-		if (node->y == y && node->ch != '\n')
+		if (node->next != NULL)
 		{
-			_rightMargin = node->next->ch == '\n' ? node->x + 1 : node->x + 2;
+			_margins.right = node->next->ch == '\n' ? node->x + 1 : node->x + 2;
 		}
-
-		if (node->next->y > y)
+		else
 		{
-			break;
+			_margins.right = node->x + 1;
 		}
 	}
 }
 
-coordinates moveArrowKeys(int ch, coordinates xy)
+inline void setBottomMargin(int newLines, TEXT *node)
+{
+	if (newLines >= _viewStart)
+	{
+		_margins.bottom = node->y;
+	}
+
+	if (node->next == NULL && node->ch == '\n')
+	{
+		_margins.bottom += _margins.bottom < _view ? 1 : 0;
+	}
+}
+
+void updateMargins(int y, int ch, TEXT *headNode)
+{
+	_margins.right = _margins.left;
+	if (headNode == NULL)
+	{
+		return;
+	}
+
+	if (ch == KEY_UP)
+	{
+		y += y != _margins.top ? -1 : 0;
+	}
+	else if (ch == KEY_DOWN)
+	{
+		y += y <= _margins.bottom ? 1 : 0;
+	}
+
+	int newLines = 0;
+	for (TEXT *node = headNode; node != NULL; node = node->next)
+	{
+		if (node == NULL)
+		{
+			break;
+		}
+
+		setBottomMargin(newLines, node);
+		setRightMargin(y, node);
+
+		newLines += node->ch == '\n' ? 1 : 0;
+		if (newLines >= _view + _viewStart)
+		{
+			break;
+		}
+	}
+	setLeftMargin(newLines);
+}
+
+coordinates updateCursor(int ch, coordinates xy)
 {
 	switch (ch)
 	{
 	case KEY_UP:
-		xy.y += xy.y != _topMargin ? -1 : 0;
-		xy.x = xy.x > _rightMargin ? _rightMargin : xy.x; 
+		xy.y += xy.y > _margins.top ? -1 : 0;
+		xy.x = xy.x > _margins.right ? _margins.right : xy.x;
 		break;
 	case KEY_DOWN:
-		xy.y += xy.y <= _bottomMargin ? 1 : 0; 
-		xy.x = xy.x > _rightMargin ? _rightMargin : xy.x; 
+		xy.y += xy.y < _margins.bottom ? 1 : 0;
+		xy.x = xy.x > _margins.right ? _margins.right : xy.x;
 		break;
 	case KEY_LEFT:
-		xy.x += xy.x != _leftMargin ? -1 : 0;
+		xy.x += xy.x > _margins.left ? -1 : 0;
 		break;
 	case KEY_RIGHT:
-		xy.x += xy.x < _rightMargin ? 1 : 0;
+		xy.x += xy.x < _margins.right ? 1 : 0;
 		break;
 	}
 
 	return xy;
 }
 
-coordinates edit(TEXT **head, coordinates xy, int ch)
+coordinates edit(TEXT **headNode, coordinates xy, int ch)
 {
 	// If backspace is pressed delete a node at the current cursor location.
 	// Else if ch is within the bounds of the condition add it in a new node.
 
 	if (ch == KEY_BACKSPACE)
 	{
-		xy = deleteNode(head, xy);
+		xy = deleteNode(headNode, xy);
 	}
 	else if ((ch >= ' ' && ch <= '~') || (ch == '\t' || ch == '\n'))
 	{
-		xy = addNode(head, ch, xy);
+		xy = addNode(headNode, ch, xy);
 	}
 
 	return xy;
 }
 
-dataCopied copy(dataCopied cpy_data, TEXT *head, coordinates xy)
+dataCopied copy(dataCopied cpy_data, TEXT *headNode, coordinates xy)
 {
 	if (cpy_data.cpy_List != NULL)
 	{
@@ -770,29 +798,36 @@ dataCopied copy(dataCopied cpy_data, TEXT *head, coordinates xy)
 
 	if (!cpy_data.isStart && !cpy_data.isEnd)
 	{
-		cpy_data.cpy_List = saveCopiedText(head, cpy_data.cpy_start, cpy_data.cpy_end);
+		cpy_data.cpy_List = saveCopiedText(headNode, cpy_data.cpy_start, cpy_data.cpy_end);
 	}
 
 	return cpy_data;
 }
 
-void updateViewPort(coordinates xy, int ch)
+void updateViewPort(coordinates xy, int ch, int newLines)
 {
 	// Update view port of the text.
 	// This could be seen as some kind of paging making editing possible outside of terminal max xy,
 
-	if (xy.y >= getmaxy(stdscr) && (ch == '\n' || ch == KEY_DOWN))
+	if (newLines == _view && ch == '\n')
 	{
 		++_viewStart;
 	}
-
-	if (xy.y == 0 && _viewStart > 0 && ch == KEY_UP)
+	else if (xy.y == _view && newLines >= _view && ch == KEY_DOWN)
+	{
+		++_viewStart;
+	}
+	else if (newLines == _view && ch == KEY_BACKSPACE)
+	{
+		--_viewStart;
+	}
+	else if (xy.y == 0 && _viewStart > 0 && ch == KEY_UP)
 	{
 		--_viewStart;
 	}
 }
 
-TEXT *openFile(TEXT *head, char *fileName)
+TEXT *openFile(TEXT *headNode, char *fileName)
 {
 	// Get the name of the file to be open.
 	char *path = newFileName();
@@ -801,10 +836,10 @@ TEXT *openFile(TEXT *head, char *fileName)
 		wclear(stdscr);
 		printw("Couldn't open file");
 		wrefresh(stdscr);
-		return head;
+		return headNode;
 	}
 
-	saveOnFileChange(head, fileName);
+	saveOnFileChange(headNode, fileName);
 
 	// Set assigned path as the file name.
 	strcpy(fileName, path);
@@ -818,53 +853,93 @@ TEXT *openFile(TEXT *head, char *fileName)
 	loadBuffer(buffer, fp, fileSize);
 
 	// Create a new list from the buffer, when done free and return the new list.
-	deleteAllNodes(head);
-	head = createNodesFromBuffer(buffer, fileSize);
-	_fileSize = getFileSizeFromList(head);
+	deleteAllNodes(headNode);
+	headNode = createNodesFromBuffer(buffer, fileSize);
+	_fileSize = getFileSizeFromList(headNode);
 
 	freeBuffer(buffer);
-	return head;
+	return headNode;
 }
 
-void editTextFile(TEXT *head, char *fileName)
+inline int updateXYOnNewLine(coordinates xy, int ch, int newLines)
+{
+	if (ch == '\n' && newLines >= _view)
+	{
+		--xy.y;
+	}
+
+	return xy.y;
+}
+
+void handleSigwinch(int signal)
+{
+	// This will allow resizing of terminal window.
+	if (signal == SIGWINCH)
+	{
+		_sigwinchFlag = true;
+	}
+}
+
+coordinates resizeWinOnSigwinch(TEXT *headNode, coordinates xy)
+{
+	// If true resize terminal, redraw the screen.
+	if (_sigwinchFlag)
+	{
+		endwin();
+		refresh();
+		initscr();
+		if (xy.y > getmaxy(stdscr))
+		{
+			xy.y = getmaxy(stdscr) - 1;
+			xy.x = 0;
+		}
+		_view = getmaxy(stdscr);
+		printText(headNode, xy);
+		_sigwinchFlag = false;
+	}
+	return xy;
+}
+
+void editTextFile(TEXT *headNode, char *fileName)
 {
 	dataCopied cpy_data = {NULL, {0, 0}, {0, 0}, false, false};
-	coordinates xy = getEndNodeCoordinates(head);
-	printNodes(head);
-	_fileSize = getFileSizeFromList(head);
+	coordinates xy = getEndNodeCoordinates(headNode);
+	printText(headNode, xy);
+	_fileSize = getFileSizeFromList(headNode);
+	_view = getmaxy(stdscr);
+	signal(SIGWINCH, handleSigwinch);
 
-	for (int ch = 0, is_running = true; is_running; ch = wgetch(stdscr))
+	for (int ch = 0, is_running = true; is_running; ch = getch())
 	{
 		switch (setMode(ch))
 		{
 		case EDIT:
-			xy = edit(&head, xy, ch);
+			xy = edit(&headNode, xy, ch);
 			break;
 		case SAVE:
-			save(head, fileName);
+			save(headNode, fileName);
 			break;
 		case COPY:
-			cpy_data = copy(cpy_data, head, xy);
+			cpy_data = copy(cpy_data, headNode, xy);
 			break;
 		case PASTE:
-			pasteCopiedlist(&head, cpy_data.cpy_List, xy);
+			pasteCopiedlist(&headNode, cpy_data.cpy_List, xy);
 			break;
 		case OPEN_FILE:
-			head = openFile(head, fileName);
+			headNode = openFile(headNode, fileName);
 			break;
 		case EXIT:
-			saveOnFileChange(head, fileName);
+			saveOnFileChange(headNode, fileName);
 			is_running = false;
 			break;
 		}
 
-		updateViewPort(xy, ch);
-		setLeftMargin(head);
-		setRightMargin(xy.y, ch, head);
-		xy = moveArrowKeys(ch, xy);
-		
-		updateCoordinatesInView(&head);
-		printNodes(head);
-		wmove(stdscr, xy.y, xy.x);
+		updateMargins(xy.y, ch, headNode);
+		updateCoordinatesInView(&headNode);
+		int newLines = countNewLinesInView(headNode);
+		updateViewPort(xy, ch, newLines);
+		xy.y = updateXYOnNewLine(xy, ch, newLines);
+		xy = updateCursor(ch, xy);
+		printText(headNode, xy);
 	}
 }
