@@ -933,11 +933,11 @@ void editTextFile(TEXT *headNode, char *fileName)
 			is_running = false;
 			break;
 		}
-
-		updateMargins(xy.y, ch, headNode);
-		updateCoordinatesInView(&headNode);
+		
 		int newLines = countNewLinesInView(headNode);
+		updateMargins(xy.y, ch, headNode);
 		updateViewPort(xy, ch, newLines);
+		updateCoordinatesInView(&headNode);
 		xy.y = updateXYOnNewLine(xy, ch, newLines);
 		xy = updateCursor(ch, xy);
 		printText(headNode, xy);
