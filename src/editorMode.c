@@ -813,7 +813,7 @@ void updateViewPort(coordinates xy, int ch, int newLines)
 	{
 		++_viewStart;
 	}
-	else if (xy.y == _view && newLines >= _view && ch == KEY_DOWN)
+	else if (xy.y == _view - 1 && newLines == _view && ch == KEY_DOWN)
 	{
 		++_viewStart;
 	}
@@ -933,7 +933,7 @@ void editTextFile(TEXT *headNode, char *fileName)
 			is_running = false;
 			break;
 		}
-		
+
 		int newLines = countNewLinesInView(headNode);
 		updateMargins(xy.y, ch, headNode);
 		updateViewPort(xy, ch, newLines);
