@@ -570,8 +570,7 @@ int countNewLinesInView(TEXT *headNode)
 	int newlines = 0;
 
 	// Count all the newlines found in the text until max view in y axis is reached.
-	// while (headNode != NULL && newlines != getmaxy(stdscr))
-	while (headNode != NULL && newlines != _view)
+	while (headNode != NULL && newlines != _view + 1)
 	{
 		if (headNode->ch == '\n')
 		{
@@ -754,8 +753,8 @@ coordinates updateCursor(int ch, coordinates xy)
 		xy.x = xy.x > _margins.right ? _margins.right : xy.x;
 		break;
 	case KEY_DOWN:
+		xy.x = xy.x > _margins.right &&  xy.y < _margins.bottom ? _margins.right : xy.x;
 		xy.y += xy.y < _margins.bottom ? 1 : 0;
-		xy.x = xy.x > _margins.right ? _margins.right : xy.x;
 		break;
 	case KEY_LEFT:
 		xy.x += xy.x > _margins.left ? -1 : 0;
@@ -809,15 +808,15 @@ void updateViewPort(coordinates xy, int ch, int newLines)
 	// Update view port of the text.
 	// This could be seen as some kind of paging making editing possible outside of terminal max xy,
 
-	if (newLines == _view && ch == '\n')
+	if (newLines >= _view && ch == '\n')
 	{
 		++_viewStart;
 	}
-	else if (xy.y == _view - 1 && newLines == _view && ch == KEY_DOWN)
+	else if (xy.y == _view - 1 && newLines > _view && ch == KEY_DOWN)
 	{
 		++_viewStart;
 	}
-	else if (newLines == _view && ch == KEY_BACKSPACE)
+	else if (newLines >= _view && ch == KEY_BACKSPACE)
 	{
 		--_viewStart;
 	}
