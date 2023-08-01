@@ -8,7 +8,15 @@
 
 #include "fileHandler.h"
 
-FILE *getFileFromArg(int argc, char **argv)
+static FILE *getFileFromArg(int argc, char **argv);
+static FILE *getFile(const char *path);
+static void closeFile(FILE *fp);
+static long getFileSize(FILE *fp);
+static char *allocateBuffer(int fileSize);
+static void freeBuffer(char *buffer);
+static void loadBuffer(char *buffer, FILE *fp, long fileSize);
+
+static FILE *getFileFromArg(int argc, char **argv)
 {
 	if (argc < 2)
 	{
@@ -24,7 +32,7 @@ FILE *getFileFromArg(int argc, char **argv)
 	return fp;
 }
 
-FILE *getFile(const char *path)
+static FILE *getFile(const char *path)
 {
 	FILE *fp = fopen(path, "r");
 	if (fp == NULL)
@@ -35,7 +43,7 @@ FILE *getFile(const char *path)
 	return fp;
 }
 
-void closeFile(FILE *fp)
+static void closeFile(FILE *fp)
 {
 	if(fp == NULL)
 	{
@@ -46,7 +54,7 @@ void closeFile(FILE *fp)
 	fp = NULL;
 }
 
-long getFileSize(FILE *fp)
+static long getFileSize(FILE *fp)
 {
 	if(fp == NULL)
 	{
@@ -68,7 +76,7 @@ long getFileSize(FILE *fp)
 	return bufferSize;
 }
 
-char *allocateBuffer(int fileSize)
+static char *allocateBuffer(int fileSize)
 {
 	if(fileSize == 0 || fileSize == -1)
 	{
@@ -84,7 +92,7 @@ char *allocateBuffer(int fileSize)
 	return buffer;
 }
 
-void freeBuffer(char *buffer)
+static void freeBuffer(char *buffer)
 {
 	if (buffer == NULL)
 	{
@@ -95,7 +103,7 @@ void freeBuffer(char *buffer)
 	buffer = NULL;
 }
 
-void loadBuffer(char *buffer, FILE *fp, long fileSize)
+static void loadBuffer(char *buffer, FILE *fp, long fileSize)
 {
 	if(buffer == NULL)
 	{
@@ -108,7 +116,7 @@ void loadBuffer(char *buffer, FILE *fp, long fileSize)
 	};
 }
 
-void curseMode(bool isCurse)
+static void curseMode(bool isCurse)
 {
 	if (isCurse)
 	{
@@ -124,6 +132,21 @@ void curseMode(bool isCurse)
 	}
 }
 
+void *reStart(char *fileName)
+{
+	FILE *fp = getFile(fileName);
+	long fileSize = getFileSize(fp);
+
+	char *buffer = allocateBuffer(fileSize);
+	loadBuffer(buffer, fp, fileSize);
+	createNodesFromBuffer(buffer, fileSize);
+
+	void *newHeadNode = createNodesFromBuffer(buffer, fileSize);
+	freeBuffer(buffer);
+	return newHeadNode;
+}
+
+
 void startUp(int argc, char **argv)
 {
 	// Set the file pointer according to args provided. Check the size of the file provided. 
@@ -136,11 +159,10 @@ void startUp(int argc, char **argv)
 	closeFile(fp);
 
 	// Load the buffer into a linked list, then free the buffer. 
-	TEXT *head = createNodesFromBuffer(buffer, fileSize);
+	void *headNode = createNodesFromBuffer(buffer, fileSize);
 	freeBuffer(buffer);
 
 	curseMode(true);
-	editTextFile(head, argv[1]);
+	runApp(headNode, argv[1]);
 	curseMode(false);
-	deleteAllNodes(head);
 }
