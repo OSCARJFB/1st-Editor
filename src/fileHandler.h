@@ -14,13 +14,7 @@
 #include <stdbool.h>
 #include "editorMode.h"
 
-FILE *getFileFromArg(int argc, char **argv);
-FILE *getFile(const char *path);
-void closeFile(FILE *fp);
-long getFileSize(FILE *fp);
-char *allocateBuffer(int fileSize);
-void freeBuffer(char *buffer);
-void loadBuffer(char *buffer, FILE *fp, long fileSize);
+void *reStart(char *fileName);
 void startUp(int argc, char **argv);
 
 #endif // FILEHANDLER_H

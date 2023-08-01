@@ -36,8 +36,8 @@ typedef struct TEXT
 
 typedef struct dataCopied
 {
-	char *cpy_List;
-	coordinates cpy_start, cpy_end;
+	char *cpyList;
+	coordinates cpyStart, cpyEnd;
 	bool isStart, isEnd;
 } dataCopied;
 
@@ -90,36 +90,7 @@ extern int _viewStart;
 extern int _view;
 extern long _fileSize;
 
-TEXT *createNodesFromBuffer(char *buffer, long fileSize);
-TEXT *createNewNode(int ch);
-coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, TEXT *last_node);
-coordinates addNode(TEXT **head, int ch, coordinates xy);
-coordinates deleteNode(TEXT **head, coordinates xy);
-coordinates getEndNodeCoordinates(TEXT *head);
-dataCopied getCopyStart(dataCopied cp_data, coordinates xy);
-dataCopied getCopyEnd(dataCopied cp_data, coordinates xy);
-char *saveCopiedText(TEXT *head, coordinates cp_start, coordinates cp_end);
-void pasteCopiedlist(TEXT **head, char *cpy_List, coordinates xy);
-void saveOnFileChange(TEXT *head, char *fileName);
-void save(TEXT *head, char *fileName);
-long getFileSizeFromList(TEXT *head);
-char *newFileName(void);
-char *saveListToBuffer(TEXT *head, long fileSize);
-void deleteAllNodes(TEXT *head);
-void updateCoordinatesInView(TEXT **head);
-int countNewLinesWithLimit(TEXT *head);
-void printText(TEXT *head, coordinates xy);
-int setMode(int ch);
-void setLeftMargin(int NewLines);
-void setRightMargin(int y, TEXT *head);
-void setBottomMargin(int y, TEXT *head);
-void updateMargins(int y, int ch, TEXT *head);
-int updateXYOnNewLine(coordinates xy, int ch, int newLines);
-coordinates updateCursor(int ch, coordinates xy);
-coordinates edit(TEXT **head, coordinates xy, int ch);
-dataCopied copy(dataCopied cpy_data, TEXT *head, coordinates xy);
-void handleSigwinch(int signal);
-coordinates resizeWinOnSigwinch(TEXT* head, coordinates xy);
-void editTextFile(TEXT *head, char *fileName);
+void *createNodesFromBuffer(char *buffer, long fileSize);
+void runApp(TEXT *headNode, char *fileName);
 
 #endif // EDITORMODE_H
