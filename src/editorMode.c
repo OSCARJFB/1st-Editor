@@ -9,13 +9,13 @@
 #include "editorMode.h"
 
 static TEXT *createNewNode(int ch);
-static coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, TEXT *last_node);
+static coordinates onEditCoordinates(coordinates xy, int sFlag,
+									 int ch, TEXT *last_node);
 static coordinates addNode(TEXT **headNode, int ch, coordinates xy);
 static coordinates deleteNode(TEXT **headNode, coordinates xy);
-static coordinates getEndNodeCoordinates(TEXT *headNode);
 static coordinates updateCursor(int ch, coordinates xy);
 static coordinates edit(TEXT **headNode, coordinates xy, int ch);
-static coordinates resizeWinOnSigwinch(TEXT* headNode, coordinates xy);
+static coordinates resizeWinOnSigwinch(TEXT *headNode, coordinates xy);
 static inline coordinates updateXYOnNewLine(coordinates xy, int ch, int newLines);
 static dataCopied getCopyStart(dataCopied cp_data, coordinates xy);
 static dataCopied getCopyEnd(dataCopied cp_data, coordinates xy);
@@ -249,12 +249,18 @@ static TEXT *createNewNode(int ch)
 	return newNode;
 }
 
-static coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, TEXT *node)
+static coordinates onEditCoordinates(coordinates xy, int sFlag,
+									 int ch, TEXT *node)
 {
 	// Set cursor coordinates according to the type of editing having been done.
 	switch (sFlag)
 	{
 	case ADD_FIRST_NODE:
+		xy.x = ch == '\n' ? _margins.left : _margins.left + 2;
+		xy.y += ch == '\n' ? 1 : 0;
+		xy.x += ch == '\t' ? _tabSize : 0;
+		break;
+	case ADD_HEAD_NODE:
 		xy.x = ch == '\n' ? _margins.left : _margins.left + 1;
 		xy.y += ch == '\n' ? 1 : 0;
 		xy.x += ch == '\t' ? _tabSize : 0;
@@ -311,7 +317,7 @@ static coordinates addNode(TEXT **headNode, int ch, coordinates xy)
 			node->prev = newNode;
 			*headNode = newNode;
 			newNode->next = node;
-			return onEditCoordinates(xy, ADD_FIRST_NODE, ch, node);
+			return onEditCoordinates(xy, ADD_HEAD_NODE, ch, node);
 		}
 
 		node = node->next;
@@ -406,36 +412,6 @@ static coordinates deleteNode(TEXT **headNode, coordinates xy)
 	return xy;
 }
 
-static coordinates getEndNodeCoordinates(TEXT *headNode)
-{
-	_view = getmaxy(stdscr);
-	updateCoordinatesInView(&headNode);
-	coordinates xy = {0, 0};
-
-	// Will find the last node in viewport and set its x and y value to be the cursor position.
-	for (int i = 0; headNode != NULL && i < _view; ++i)
-	{
-		if (headNode->next == NULL)
-		{
-			break;
-		}
-		headNode = headNode->next;
-	}
-
-	if (headNode != NULL)
-	{
-		xy.x = headNode->x + 1;
-		xy.y = headNode->y;
-	}
-	else
-	{
-		xy.x = _margins.left;
-		xy.y = 0;
-	}
-
-	return xy;
-}
-
 static void updateCoordinatesInView(TEXT **headNode)
 {
 	if (*headNode == NULL)
@@ -448,7 +424,7 @@ static void updateCoordinatesInView(TEXT **headNode)
 	{
 		if (newLines >= _viewStart)
 		{
-			nLinesInView += node->ch == '\n' ? 1 : 0; 
+			nLinesInView += node->ch == '\n' ? 1 : 0;
 			node->x = x;
 			node->y = y;
 
@@ -624,13 +600,14 @@ static void printText(TEXT *headNode, coordinates xy)
 	{
 		clear();
 		printw("%d", lineNumber + 1);
+		move(xy.y, xy.x);
 		refresh();
 		return;
 	}
 
 	// Print the nodes at x and y position.
 	clear();
-	int nLinesInView = 0; 
+	int nLinesInView = 0;
 	for (TEXT *node = headNode; node != NULL; node = node->next)
 	{
 		if (lineNumber >= _viewStart)
@@ -639,7 +616,7 @@ static void printText(TEXT *headNode, coordinates xy)
 			{
 				nlFlag = false;
 				printw("%d", lineNumber + 1);
-				++nLinesInView; 
+				++nLinesInView;
 			}
 			mvwaddch(stdscr, node->y, node->x, node->ch);
 		}
@@ -650,7 +627,7 @@ static void printText(TEXT *headNode, coordinates xy)
 			++lineNumber;
 		}
 
-		if(nLinesInView == _view)
+		if (nLinesInView == _view)
 		{
 			break;
 		}
@@ -686,7 +663,7 @@ static int setMode(int ch)
 	case 'e':
 		return EXIT;
 	}
-	
+
 	return EDIT;
 }
 
@@ -785,7 +762,7 @@ static coordinates updateCursor(int ch, coordinates xy)
 		xy.x = xy.x > _margins.right ? _margins.right : xy.x;
 		break;
 	case KEY_DOWN:
-		xy.x = xy.x > _margins.right &&  xy.y < _margins.bottom ? _margins.right : xy.x;
+		xy.x = xy.x > _margins.right && xy.y < _margins.bottom ? _margins.right : xy.x;
 		xy.y += xy.y < _margins.bottom ? 1 : 0;
 		break;
 	case KEY_LEFT:
@@ -871,23 +848,23 @@ static TEXT *openFile(TEXT *headNode, char *fileName)
 
 	saveOnFileChange(headNode, fileName);
 
-	if(fileName != NULL)
+	if (fileName != NULL)
 	{
 		strcpy(fileName, path);
 	}
-	else 
+	else
 	{
 		fileName = path;
 	}
 
-	TEXT* newHeadNode = reStart(fileName);
-	if(newHeadNode == NULL)
+	TEXT *newHeadNode = reStart(fileName);
+	if (newHeadNode == NULL)
 	{
-		return headNode; 
+		return headNode;
 	}
 
 	deleteAllNodes(headNode);
-	headNode = newHeadNode; 
+	headNode = newHeadNode;
 	_fileSize = getFileSizeFromList(headNode);
 
 	return headNode;
@@ -920,6 +897,11 @@ static coordinates resizeWinOnSigwinch(TEXT *headNode, coordinates xy)
 		printText(headNode, xy);
 		_sigwinchFlag = false;
 	}
+	else
+	{
+		_view = getmaxy(stdscr);
+	}
+
 	return xy;
 }
 
@@ -935,7 +917,8 @@ static void handleSigwinch(int signal)
 void runApp(TEXT *headNode, char *fileName)
 {
 	dataCopied cpyData = {NULL, {0, 0}, {0, 0}, false, false};
-	coordinates xy = getEndNodeCoordinates(headNode);
+	coordinates xy = {_margins.left + 1, 0};
+	updateCoordinatesInView(&headNode);
 	printText(headNode, xy);
 	_fileSize = getFileSizeFromList(headNode);
 	signal(SIGWINCH, handleSigwinch);

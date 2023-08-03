@@ -77,6 +77,7 @@ enum mode
 enum state
 {
 	ADD_FIRST_NODE,
+	ADD_HEAD_NODE,
 	ADD_MIDDLE_NODE,
 	ADD_END_NODE,
 	DEL_NODE,
