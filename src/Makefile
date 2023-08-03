@@ -20,7 +20,7 @@ assembly:
 	$(cc) main.c fileHandler.c editorMode.c -lncurses -S assembly.s
 
 release: 
-	$(cc) main.c fileHandler.c editorMode.c $(cflags_release) -lncurses -o main.o
+	$(cc) main.c fileHandler.c editorMode.c $(cflags_release) -lncurses -o ob
 
 clean:
 	rm -rf *.o && rm -rf *.s
