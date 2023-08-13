@@ -14,6 +14,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <ncurses.h>
+#include <error.h> 
 #include <signal.h>
 #include "fileHandler.h"
 

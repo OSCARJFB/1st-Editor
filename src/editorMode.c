@@ -9,8 +9,7 @@
 #include "editorMode.h"
 
 static TEXT *createNewNode(int ch);
-static coordinates onEditCoordinates(coordinates xy, int sFlag,
-									 int ch, TEXT *last_node);
+static coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, TEXT *last_node);
 static coordinates addNode(TEXT **headNode, int ch, coordinates xy);
 static coordinates deleteNode(TEXT **headNode, coordinates xy);
 static coordinates updateCursor(int ch, coordinates xy);
@@ -28,6 +27,7 @@ static void updateCoordinatesInView(TEXT **headNode);
 static void printText(TEXT *headNode, coordinates xy);
 static void updateMargins(int y, int ch, TEXT *headNode);
 static void handleSigwinch(int signal);
+static void *memAlloc(void *mem);
 static inline void setLeftMargin(int NewLines);
 static inline void setRightMargin(int y, TEXT *headNode);
 static inline void setBottomMargin(int y, TEXT *headNode);
@@ -39,12 +39,33 @@ static char *saveListToBuffer(TEXT *headNode, long fileSize);
 
 textMargins _margins = {MARGIN_SPACE_2, 0, 0, 0};
 bool _sigwinchFlag = false;
-int _tabSize = 6;
+int _tabSize = 4;
 int _copySize = 0;
 int _viewStart = 0;
 int _view = 0;
 long _fileSize = 0;
 
+/**
+ * Assert memory allocation from functions like malloc, calloc or realloc. 
+ * Check if the returned void pointer is NULL. If true the application will exit with error code 1.
+ * Else this function will return the allocated void pointer.
+ */
+static void *memAlloc(void *mem)
+{
+	if(mem == NULL)
+	{
+		endwin(); 
+		perror("Memory allocation failed | Critical error | application will exit with return code 1\n");
+		exit(1);
+	}
+
+	return mem; 
+}
+
+/**
+ * Convert the buffer into a linked list.
+ * The list is required when editing. 
+ */
 void *createNodesFromBuffer(char *buffer, long fileSize)
 {
 	if (buffer == NULL)
@@ -74,6 +95,10 @@ void *createNodesFromBuffer(char *buffer, long fileSize)
 	return headNode;
 }
 
+/**
+ * Counts the number of characters in the list.
+ * This is necessary when converting the list into a single buffer for saving.
+ */
 static long getFileSizeFromList(TEXT *headNode)
 {
 	long fileSize = 0;
@@ -90,6 +115,11 @@ static long getFileSizeFromList(TEXT *headNode)
 	return fileSize;
 }
 
+/**
+ * Save the TEXT list to a file.
+ * Data will be stored in whatever text string the file name pointer stores.
+ * If this pointer is NULL, request a new file name from the user. 
+ */
 static void save(TEXT *headNode, char *fileName)
 {
 	FILE *fp = NULL;
@@ -103,20 +133,7 @@ static void save(TEXT *headNode, char *fileName)
 	if (fileName == NULL)
 	{
 		char *newName = newFileName();
-		if (newName == NULL)
-		{
-			free(buffer);
-			buffer = NULL;
-			return;
-		}
-
-		fileName = malloc(sizeof(char) * FILENAME_SIZE);
-		if (fileName == NULL)
-		{
-			free(buffer);
-			buffer = NULL;
-			return;
-		}
+		fileName = memAlloc(malloc(sizeof(char) * FILENAME_SIZE));
 		strcpy(fileName, newName);
 	}
 
@@ -139,12 +156,7 @@ static char *saveListToBuffer(TEXT *headNode, long fileSize)
 		return NULL;
 	}
 
-	char *buffer = malloc((fileSize * sizeof(char)) + 1);
-	if (buffer == NULL)
-	{
-		return NULL;
-	}
-
+	char *buffer = memAlloc(malloc((fileSize * sizeof(char)) + 1));
 	for (int i = 0; headNode != NULL && i < fileSize; headNode = headNode->next)
 	{
 		buffer[i++] = headNode->ch;
@@ -178,14 +190,13 @@ static void saveOnFileChange(TEXT *headNode, char *fileName)
 	wrefresh(stdscr);
 }
 
+/**
+ * Request a new file name.
+ * Loop and check for user input, add the input to the fileName or remove it  
+ */
 static char *newFileName(void)
 {
-	char *fileName = malloc(sizeof(char) * FILENAME_SIZE);
-	if (fileName == NULL)
-	{
-		return NULL;
-	}
-
+	char *fileName = memAlloc(malloc(sizeof(char) * FILENAME_SIZE));
 	int index = 0;
 	for (int ch = 0; ch != '\n' && index < FILENAME_SIZE; ch = wgetch(stdscr))
 	{
@@ -214,6 +225,10 @@ static char *newFileName(void)
 	return fileName;
 }
 
+/**
+ * Iterate the list and delete all nodes.
+ * After calling free each pointer should be set to NULL. 
+ */
 static void deleteAllNodes(TEXT **headNode)
 {
 	if(headNode == NULL)
@@ -228,20 +243,17 @@ static void deleteAllNodes(TEXT **headNode)
 		temp = *headNode;
 		*headNode = (*headNode)->next;
 		free(temp);
+		temp = NULL;
 	}
-
-	temp = NULL;
-	headNode = NULL;
 }
 
+/**
+ * Create a new node. 
+ * Set the values of the node. 
+ */
 static TEXT *createNewNode(int ch)
 {
-	TEXT *newNode = malloc(sizeof(TEXT));
-	if(newNode == NULL)
-	{
-		return NULL;
-	}
-
+	TEXT *newNode = memAlloc(malloc(sizeof(TEXT)));
 	newNode->ch = ch;
 	newNode->next = NULL;
 	newNode->prev = NULL;
@@ -252,30 +264,31 @@ static TEXT *createNewNode(int ch)
  * Here we set the coordinates of the cursor.
  * This function should be called once the TEXT list have been edited.
  */
-static coordinates onEditCoordinates(coordinates xy, int sFlag, 
-			             int ch, TEXT *node)
+static coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, TEXT *node)
 {
+	if(ch == '\t')
+	{
+		xy.x += _tabSize; 
+		return xy;
+	}
+
 	switch(sFlag)
 	{
 		case ADD_FIRST_NODE:
 			xy.x = ch == '\n' ? _margins.left : _margins.left + 2;
 			xy.y += ch == '\n' ? 1 : 0;
-			xy.x += ch == '\t' ? _tabSize : 0;
 			break;
 		case ADD_HEAD_NODE:
 			xy.x = ch == '\n' ? _margins.left : _margins.left + 1;
 			xy.y += ch == '\n' ? 1 : 0;
-			xy.x += ch == '\t' ? _tabSize : 0;
 			break;
 		case ADD_MIDDLE_NODE:
 			xy.x = ch == '\n' ? _margins.left : node->x + 1;
 			xy.y += ch == '\n' ? 1 : 0;
-			xy.x += ch == '\t' ? _tabSize : 0;
 			break;
 		case ADD_END_NODE:
 			xy.x = ch == '\n' ? _margins.left : node->ch == '\n' ? _margins.left + 1 : node->x + 2;
 			xy.y += ch == '\n' ? 1 : 0;
-			xy.x += ch == '\t' ? _tabSize : 0;
 			break;
 		case DEL_NODE:
 			xy.x = node->x;
@@ -290,6 +303,10 @@ static coordinates onEditCoordinates(coordinates xy, int sFlag,
 	return xy;
 }
 
+/**
+ * Check the list for a spefic coordinates marking the current cursor position. 
+ * At this point the function will add a new character. Finally it will return the new mouse position. 
+ */
 static coordinates addNode(TEXT **headNode, int ch, coordinates xy)
 {
 	TEXT *newNode = createNewNode(ch), *node = *headNode, *prevNode = NULL;
@@ -341,6 +358,11 @@ static coordinates addNode(TEXT **headNode, int ch, coordinates xy)
 	return onEditCoordinates(xy, ADD_END_NODE, ch, node);
 }
 
+/**
+ * This function will delete an item in the TEXT list.
+ * It takes a list and searches the position of the list item to be deleted. It does so by looking at the cursor input (xy).
+ * When found it will delete the item and relink the list. Finally it returns the new mouse position.  
+ */
 static coordinates deleteNode(TEXT **headNode, coordinates xy)
 {
 	// We can't free/delete a node which is NULL or if at end of coordinates.
@@ -413,6 +435,11 @@ static coordinates deleteNode(TEXT **headNode, coordinates xy)
 	return xy;
 }
 
+/**
+ * Will update the coordinates of the text inside the bounderies of the terminal view.
+ * This needs to be done to display the TEXT list nodes at their correct location. 
+ * We loop the list until we find the starting point (current view), then we update each item until the end of the view is reached.
+ */
 static void updateCoordinatesInView(TEXT **headNode)
 {
 	if (*headNode == NULL)
@@ -467,6 +494,10 @@ static dataCopied getCopyStart(dataCopied cpyData, coordinates xy)
 	return cpyData;
 }
 
+/**
+ *  Store copy start and copy end.
+ *  This will return a start and an end coordinate. 
+ */
 static dataCopied getCopyEnd(dataCopied cpyData, coordinates xy)
 {
 	if (cpyData.isStart && cpyData.isEnd)
@@ -484,6 +515,10 @@ static dataCopied getCopyEnd(dataCopied cpyData, coordinates xy)
 	return cpyData;
 }
 
+/**
+ * This function will save and create a list of data between two coordinate points.
+ * It will check xy -> xy and then allocate an array of data store any values between those points.
+ */
 static char *saveCopiedText(TEXT *headNode, coordinates cpyStart, coordinates cpyEnd)
 {
 	char *cpyList = NULL;
@@ -504,12 +539,7 @@ static char *saveCopiedText(TEXT *headNode, coordinates cpyStart, coordinates cp
 		{
 			if (cpyList == NULL)
 			{
-				cpyList = malloc(CPY_BUFFER_SIZE * sizeof(char));
-				if (cpyList == NULL)
-				{
-					return NULL;
-				}
-
+				cpyList = memAlloc(malloc(CPY_BUFFER_SIZE * sizeof(char)));
 				start_found = true;
 			}
 
@@ -532,6 +562,10 @@ static char *saveCopiedText(TEXT *headNode, coordinates cpyStart, coordinates cp
 	return cpyList;
 }
 
+/**
+ * Paste and line items to the TEXT list. 
+ * Items will be pasted between xy -> xy. 
+ */
 static void pasteCopiedlist(TEXT **headNode, char *cpyList, coordinates xy)
 {
 	if (*headNode == NULL || cpyList == NULL)
@@ -574,11 +608,14 @@ static void pasteCopiedlist(TEXT **headNode, char *cpyList, coordinates xy)
 	}
 }
 
+/**
+ * Count how many newlines that exists within the bounds of the terminal view.
+ * This is usefull to help determine when we've added more items to the TEXT list than may be viewed in the terminal. 
+ */
 static int countNewLinesInView(TEXT *headNode)
 {
 	int newlines = 0;
 
-	// Count all the newlines found in the text until max view in y axis is reached.
 	while (headNode != NULL && newlines != _view + 1)
 	{
 		if (headNode->ch == '\n')
@@ -591,6 +628,10 @@ static int countNewLinesInView(TEXT *headNode)
 	return newlines;
 }
 
+/**
+ * Prints all text from the TEXT list. 
+ * Finally this function will also print the cursor at its current position. 
+ */
 static void printText(TEXT *headNode, coordinates xy)
 {
 	int lineNumber = 0;
@@ -668,9 +709,12 @@ static int setMode(int ch)
 	return EDIT;
 }
 
+/**
+ * This function will set the left margin. 
+ * The size of the left margin is decided depending on the amount of rows in the file.  
+ */
 static inline void setLeftMargin(int newLines)
 {
-	// Set margin depending on the amount of newlines
 	if (newLines < LIM_1)
 	{
 		_margins.left = MARGIN_SPACE_3;
@@ -689,6 +733,11 @@ static inline void setLeftMargin(int newLines)
 	}
 }
 
+
+/**
+ * The right margin is make sure the user can't navigate outside the bounds of the text.
+ * Making sure we keep the cursor within the editor area. This value is found by looking at the current y rows x coordinate limit. 
+ */
 static inline void setRightMargin(int y, TEXT *node)
 {
 	if (node->y == y && node->ch != '\n')
@@ -704,6 +753,10 @@ static inline void setRightMargin(int y, TEXT *node)
 	}
 }
 
+/**
+ * Set the bottom margin.
+ * This margin will prevent the user from navigating downwards outside of bounds. 
+ */
 static inline void setBottomMargin(int newLines, TEXT *node)
 {
 	if (newLines >= _viewStart)
@@ -717,6 +770,10 @@ static inline void setBottomMargin(int newLines, TEXT *node)
 	}
 }
 
+/**
+ * This function will call for an update of the terminal margins.
+ * It fetches and sets left, right, and bottom margin (top is always 0).
+ */
 static void updateMargins(int y, int ch, TEXT *headNode)
 {
 	_margins.right = _margins.left;
@@ -754,6 +811,10 @@ static void updateMargins(int y, int ch, TEXT *headNode)
 	setLeftMargin(newLines);
 }
 
+/**
+ * When using the arrow keys, this function will update cursor position. This will ensure the cursor remain at the correct location. 
+ * Any updated position must follow the rules set by the terminal margins.
+ */
 static coordinates updateCursor(int ch, coordinates xy)
 {
 	switch(ch)
@@ -777,11 +838,12 @@ static coordinates updateCursor(int ch, coordinates xy)
 	return xy;
 }
 
+/*
+ * If backspace is pressed delete a node at the current cursor location.
+ * Else if ch is within the bounds of the condition add it in a new node.
+ */
 static coordinates edit(TEXT **headNode, coordinates xy, int ch)
 {
-	// If backspace is pressed delete a node at the current cursor location.
-	// Else if ch is within the bounds of the condition add it in a new node.
-
 	if(ch == KEY_BACKSPACE)
 	{
 		xy = deleteNode(headNode, xy);
@@ -794,6 +856,13 @@ static coordinates edit(TEXT **headNode, coordinates xy, int ch)
 	return xy;
 }
 
+/**
+ * Control function for copy / marking text.
+ * This function requests a start and end location in the terminal.
+ * Finally it will save the sub list found between these coordinates.
+ * 
+ * TODO This function can't handle paging of viewport. 
+ */
 static dataCopied copy(dataCopied cpyData, TEXT *headNode, coordinates xy)
 {
 	if(cpyData.cpyList != NULL)
@@ -813,11 +882,12 @@ static dataCopied copy(dataCopied cpyData, TEXT *headNode, coordinates xy)
 	return cpyData;
 }
 
+/**
+ * Update view port of the text.
+ * This could be seen as some kind of paging making editing possible outside of terminal max bounds for xy.
+ */
 static void updateViewPort(coordinates xy, int ch, int newLines)
 {
-	// Update view port of the text.
-	// This could be seen as some kind of paging making editing possible outside of terminal max xy,
-
 	if (newLines >= _view && ch == '\n')
 	{
 		++_viewStart;
@@ -871,6 +941,10 @@ static TEXT *openFile(TEXT *headNode, char *fileName)
 	return headNode;
 }
 
+/**
+ * If a newline char is entered. 
+ * Make sure we don't put the cursor out of bounds of the view. 
+ */
 static inline coordinates updateXYOnNewLine(coordinates xy, int ch, int newLines)
 {
 	if (ch == '\n' && newLines >= _view)
@@ -881,6 +955,10 @@ static inline coordinates updateXYOnNewLine(coordinates xy, int ch, int newLines
 	return xy;
 }
 
+/**
+ * Update the coordinates of the terminal on resize signal. 
+ * This will hopefully set the new view coordinates within the bounds of the terminal. 
+ */
 static coordinates resizeWinOnSigwinch(TEXT *headNode, coordinates xy)
 {
 	// If true resize terminal, redraw the screen.
@@ -906,15 +984,23 @@ static coordinates resizeWinOnSigwinch(TEXT *headNode, coordinates xy)
 	return xy;
 }
 
+/**
+ * Check for SIGWINCH signal.
+ * If received set the flag to true which enable resize of terminal logic. 
+ */
 static void handleSigwinch(int signal)
 {
-	// This will allow resizing of terminal window.
 	if (signal == SIGWINCH)
 	{
 		_sigwinchFlag = true;
 	}
 }
 
+
+/**
+ * Run text editor mode. 
+ * While looping switch user action. 
+ */
 void runApp(TEXT *headNode, char *fileName)
 {
 	dataCopied cpyData = {NULL, {0, 0}, {0, 0}, false, false};
