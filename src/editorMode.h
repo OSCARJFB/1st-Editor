@@ -14,9 +14,9 @@
 #include <string.h>
 #include <stdbool.h>
 #include <ncurses.h>
-#include <error.h> 
 #include <signal.h>
 #include "fileHandler.h"
+#include "allocHandler.h"
 
 #define ESC_KEY 27
 #define NO_KEY -1

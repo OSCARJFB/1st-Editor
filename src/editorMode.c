@@ -27,7 +27,6 @@ static void updateCoordinatesInView(TEXT **headNode);
 static void printText(TEXT *headNode, coordinates xy);
 static void updateMargins(int y, int ch, TEXT *headNode);
 static void handleSigwinch(int signal);
-static void *memAlloc(void *mem);
 static inline void setLeftMargin(int NewLines);
 static inline void setRightMargin(int y, TEXT *headNode);
 static inline void setBottomMargin(int y, TEXT *headNode);
@@ -44,23 +43,6 @@ int _copySize = 0;
 int _viewStart = 0;
 int _view = 0;
 long _fileSize = 0;
-
-/**
- * Assert memory allocation from functions like malloc, calloc or realloc. 
- * Check if the returned void pointer is NULL. If true the application will exit with error code 1.
- * Else this function will return the allocated void pointer.
- */
-static void *memAlloc(void *mem)
-{
-	if(mem == NULL)
-	{
-		endwin(); 
-		perror("Memory allocation failed | Critical error | application will exit with return code 1\n");
-		exit(1);
-	}
-
-	return mem; 
-}
 
 /**
  * Convert the buffer into a linked list.
@@ -133,7 +115,7 @@ static void save(TEXT *headNode, char *fileName)
 	if (fileName == NULL)
 	{
 		char *newName = newFileName();
-		fileName = memAlloc(malloc(sizeof(char) * FILENAME_SIZE));
+		fileName = memAlloc(malloc(sizeof(char) * FILENAME_SIZE), sizeof(char) * FILENAME_SIZE);
 		strcpy(fileName, newName);
 	}
 
@@ -156,7 +138,7 @@ static char *saveListToBuffer(TEXT *headNode, long fileSize)
 		return NULL;
 	}
 
-	char *buffer = memAlloc(malloc((fileSize * sizeof(char)) + 1));
+	char *buffer = memAlloc(malloc(fileSize * sizeof(char) + 1), fileSize * sizeof(char) + 1);
 	for (int i = 0; headNode != NULL && i < fileSize; headNode = headNode->next)
 	{
 		buffer[i++] = headNode->ch;
@@ -196,7 +178,7 @@ static void saveOnFileChange(TEXT *headNode, char *fileName)
  */
 static char *newFileName(void)
 {
-	char *fileName = memAlloc(malloc(sizeof(char) * FILENAME_SIZE));
+	char *fileName = memAlloc(malloc(sizeof(char) * FILENAME_SIZE), sizeof(char) * FILENAME_SIZE);
 	int index = 0;
 	for (int ch = 0; ch != '\n' && index < FILENAME_SIZE; ch = wgetch(stdscr))
 	{
@@ -253,7 +235,7 @@ static void deleteAllNodes(TEXT **headNode)
  */
 static TEXT *createNewNode(int ch)
 {
-	TEXT *newNode = memAlloc(malloc(sizeof(TEXT)));
+	TEXT *newNode = memAlloc(malloc(sizeof(TEXT)), sizeof(TEXT));
 	newNode->ch = ch;
 	newNode->next = NULL;
 	newNode->prev = NULL;
@@ -480,6 +462,9 @@ static void updateCoordinatesInView(TEXT **headNode)
 	}
 }
 
+/**
+ * This will set the start coordinate of copy.
+ */
 static dataCopied getCopyStart(dataCopied cpyData, coordinates xy)
 {
 	if (cpyData.isStart)
@@ -495,8 +480,7 @@ static dataCopied getCopyStart(dataCopied cpyData, coordinates xy)
 }
 
 /**
- *  Store copy start and copy end.
- *  This will return a start and an end coordinate. 
+ *  This will set the end coordinate for copy. 
  */
 static dataCopied getCopyEnd(dataCopied cpyData, coordinates xy)
 {
@@ -539,7 +523,7 @@ static char *saveCopiedText(TEXT *headNode, coordinates cpyStart, coordinates cp
 		{
 			if (cpyList == NULL)
 			{
-				cpyList = memAlloc(malloc(CPY_BUFFER_SIZE * sizeof(char)));
+				cpyList = memAlloc(malloc(CPY_BUFFER_SIZE * sizeof(char)), CPY_BUFFER_SIZE * sizeof(char));
 				start_found = true;
 			}
 
