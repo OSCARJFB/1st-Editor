@@ -83,12 +83,7 @@ static char *allocateBuffer(int fileSize)
 		return NULL; 
 	}
 
-	char *buffer = malloc(fileSize);
-	if (buffer == NULL)
-	{
-		return NULL;
-	}
-
+	char *buffer = memAlloc(malloc(fileSize), fileSize);
 	return buffer;
 }
 
@@ -132,6 +127,10 @@ static void curseMode(bool isCurse)
 	}
 }
 
+/**
+ * This function is very similar to startUp.
+ * It is used when loading a new file.
+ */
 void *reStart(char *fileName)
 {
 	FILE *fp = getFile(fileName);
@@ -146,22 +145,21 @@ void *reStart(char *fileName)
 	return newHeadNode;
 }
 
-
+/**
+ * This function will call necessary operations to start editing of a file. 
+ * It will try to open a file if specified in the arguments, it will allocate a buffer loading the data. 
+ * Once done it will create a list ready for editing.  
+ */
 void startUp(int argc, char **argv)
 {
-	// Set the file pointer according to args provided. Check the size of the file provided. 
+	allocateBackUp();
 	FILE *fp = getFileFromArg(argc, argv);
 	long fileSize = getFileSize(fp);
-	
-	// Depending on the size allocate a buffer storing the file, then close it. 
 	char *buffer = allocateBuffer(fileSize);
 	loadBuffer(buffer, fp, fileSize);
 	closeFile(fp);
-
-	// Load the buffer into a linked list, then free the buffer. 
 	void *headNode = createNodesFromBuffer(buffer, fileSize);
 	freeBuffer(buffer);
-
 	curseMode(true);
 	runApp(headNode, argv[1]);
 	curseMode(false);
