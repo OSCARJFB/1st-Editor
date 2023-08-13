@@ -23,7 +23,7 @@ static dataCopied copy(dataCopied cpyData, TEXT *headNode, coordinates xy);
 static void pasteCopiedlist(TEXT **headNode, char *cpyList, coordinates xy);
 static void saveOnFileChange(TEXT *headNode, char *fileName);
 static void save(TEXT *headNode, char *fileName);
-static void deleteAllNodes(TEXT *headNode);
+static void deleteAllNodes(TEXT **headNode);
 static void updateCoordinatesInView(TEXT **headNode);
 static void printText(TEXT *headNode, coordinates xy);
 static void updateMargins(int y, int ch, TEXT *headNode);
@@ -36,7 +36,6 @@ static int setMode(int ch);
 static int countNewLinesInView(TEXT *headNode);
 static char *newFileName(void);
 static char *saveListToBuffer(TEXT *headNode, long fileSize);
-static void deleteAllNodes(TEXT *headNode);
 
 textMargins _margins = {MARGIN_SPACE_2, 0, 0, 0};
 bool _sigwinchFlag = false;
@@ -215,19 +214,19 @@ static char *newFileName(void)
 	return fileName;
 }
 
-static void deleteAllNodes(TEXT *headNode)
+static void deleteAllNodes(TEXT **headNode)
 {
-	if (headNode == NULL)
+	if(headNode == NULL)
 	{
 		return;
 	}
 
 	// Delete and free every single node.
 	TEXT *temp = NULL;
-	while (headNode != NULL)
+	while(*headNode != NULL)
 	{
-		temp = headNode;
-		headNode = headNode->next;
+		temp = *headNode;
+		*headNode = (*headNode)->next;
 		free(temp);
 	}
 
@@ -238,7 +237,7 @@ static void deleteAllNodes(TEXT *headNode)
 static TEXT *createNewNode(int ch)
 {
 	TEXT *newNode = malloc(sizeof(TEXT));
-	if (newNode == NULL)
+	if(newNode == NULL)
 	{
 		return NULL;
 	}
@@ -249,41 +248,43 @@ static TEXT *createNewNode(int ch)
 	return newNode;
 }
 
-static coordinates onEditCoordinates(coordinates xy, int sFlag,
-									 int ch, TEXT *node)
+/**
+ * Here we set the coordinates of the cursor.
+ * This function should be called once the TEXT list have been edited.
+ */
+static coordinates onEditCoordinates(coordinates xy, int sFlag, 
+			             int ch, TEXT *node)
 {
-	// Set cursor coordinates according to the type of editing having been done.
-	switch (sFlag)
+	switch(sFlag)
 	{
-	case ADD_FIRST_NODE:
-		xy.x = ch == '\n' ? _margins.left : _margins.left + 2;
-		xy.y += ch == '\n' ? 1 : 0;
-		xy.x += ch == '\t' ? _tabSize : 0;
-		break;
-	case ADD_HEAD_NODE:
-		xy.x = ch == '\n' ? _margins.left : _margins.left + 1;
-		xy.y += ch == '\n' ? 1 : 0;
-		xy.x += ch == '\t' ? _tabSize : 0;
-		break;
-	case ADD_MIDDLE_NODE:
-		xy.x = ch == '\n' ? _margins.left : node->x + 1;
-		xy.y += ch == '\n' ? 1 : 0;
-		xy.x += ch == '\t' ? _tabSize : 0;
-		break;
-	case ADD_END_NODE:
-		xy.x = ch == '\n' ? _margins.left : node->ch == '\n' ? _margins.left + 1
-															 : node->x + 2;
-		xy.y += ch == '\n' ? 1 : 0;
-		xy.x += ch == '\t' ? _tabSize : 0;
-		break;
-	case DEL_NODE:
-		xy.x = node->x;
-		xy.y = node->y;
-		break;
-	case DEL_AT_END:
-		xy.x = _margins.left;
-		xy.y = 0;
-		break;
+		case ADD_FIRST_NODE:
+			xy.x = ch == '\n' ? _margins.left : _margins.left + 2;
+			xy.y += ch == '\n' ? 1 : 0;
+			xy.x += ch == '\t' ? _tabSize : 0;
+			break;
+		case ADD_HEAD_NODE:
+			xy.x = ch == '\n' ? _margins.left : _margins.left + 1;
+			xy.y += ch == '\n' ? 1 : 0;
+			xy.x += ch == '\t' ? _tabSize : 0;
+			break;
+		case ADD_MIDDLE_NODE:
+			xy.x = ch == '\n' ? _margins.left : node->x + 1;
+			xy.y += ch == '\n' ? 1 : 0;
+			xy.x += ch == '\t' ? _tabSize : 0;
+			break;
+		case ADD_END_NODE:
+			xy.x = ch == '\n' ? _margins.left : node->ch == '\n' ? _margins.left + 1 : node->x + 2;
+			xy.y += ch == '\n' ? 1 : 0;
+			xy.x += ch == '\t' ? _tabSize : 0;
+			break;
+		case DEL_NODE:
+			xy.x = node->x;
+			xy.y = node->y;
+			break;
+		case DEL_AT_END:
+			xy.x = _margins.left;
+			xy.y = 0;
+			break;
 	}
 
 	return xy;
@@ -644,24 +645,24 @@ static void printText(TEXT *headNode, coordinates xy)
 
 static int setMode(int ch)
 {
-	if (ch != ESC_KEY)
+	if(ch != ESC_KEY)
 	{
 		return EDIT;
 	}
 
 	ch = wgetch(stdscr);
-	switch (ch)
+	switch(ch)
 	{
-	case 's':
-		return SAVE;
-	case 'c':
-		return COPY;
-	case 'v':
-		return PASTE;
-	case 'o':
-		return OPEN_FILE;
-	case 'e':
-		return EXIT;
+		case 's':
+			return SAVE;
+		case 'c':
+			return COPY;
+		case 'v':
+			return PASTE;
+		case 'o':
+			return OPEN_FILE;
+		case 'e':
+			return EXIT;
 	}
 
 	return EDIT;
@@ -755,22 +756,22 @@ static void updateMargins(int y, int ch, TEXT *headNode)
 
 static coordinates updateCursor(int ch, coordinates xy)
 {
-	switch (ch)
+	switch(ch)
 	{
-	case KEY_UP:
-		xy.y += xy.y > _margins.top ? -1 : 0;
-		xy.x = xy.x > _margins.right ? _margins.right : xy.x;
-		break;
-	case KEY_DOWN:
-		xy.x = xy.x > _margins.right && xy.y < _margins.bottom ? _margins.right : xy.x;
-		xy.y += xy.y < _margins.bottom ? 1 : 0;
-		break;
-	case KEY_LEFT:
-		xy.x += xy.x > _margins.left ? -1 : 0;
-		break;
-	case KEY_RIGHT:
-		xy.x += xy.x < _margins.right ? 1 : 0;
-		break;
+		case KEY_UP:
+			xy.y += xy.y > _margins.top ? -1 : 0;
+			xy.x = xy.x > _margins.right ? _margins.right : xy.x;
+			break;
+		case KEY_DOWN:
+			xy.x = xy.x > _margins.right && xy.y < _margins.bottom ? _margins.right : xy.x;
+			xy.y += xy.y < _margins.bottom ? 1 : 0;
+			break;
+		case KEY_LEFT:
+			xy.x += xy.x > _margins.left ? -1 : 0;
+			break;
+		case KEY_RIGHT:
+			xy.x += xy.x < _margins.right ? 1 : 0;
+			break;
 	}
 
 	return xy;
@@ -781,11 +782,11 @@ static coordinates edit(TEXT **headNode, coordinates xy, int ch)
 	// If backspace is pressed delete a node at the current cursor location.
 	// Else if ch is within the bounds of the condition add it in a new node.
 
-	if (ch == KEY_BACKSPACE)
+	if(ch == KEY_BACKSPACE)
 	{
 		xy = deleteNode(headNode, xy);
 	}
-	else if ((ch >= ' ' && ch <= '~') || (ch == '\t' || ch == '\n'))
+	else if((ch >= ' ' && ch <= '~') || (ch == '\t' || ch == '\n'))
 	{
 		xy = addNode(headNode, ch, xy);
 	}
@@ -795,7 +796,7 @@ static coordinates edit(TEXT **headNode, coordinates xy, int ch)
 
 static dataCopied copy(dataCopied cpyData, TEXT *headNode, coordinates xy)
 {
-	if (cpyData.cpyList != NULL)
+	if(cpyData.cpyList != NULL)
 	{
 		free(cpyData.cpyList);
 		cpyData.cpyList = NULL;
@@ -804,7 +805,7 @@ static dataCopied copy(dataCopied cpyData, TEXT *headNode, coordinates xy)
 	cpyData = getCopyStart(cpyData, xy);
 	cpyData = getCopyEnd(cpyData, xy);
 
-	if (!cpyData.isStart && !cpyData.isEnd)
+	if(!cpyData.isStart && !cpyData.isEnd)
 	{
 		cpyData.cpyList = saveCopiedText(headNode, cpyData.cpyStart, cpyData.cpyEnd);
 	}
@@ -863,7 +864,7 @@ static TEXT *openFile(TEXT *headNode, char *fileName)
 		return headNode;
 	}
 
-	deleteAllNodes(headNode);
+	deleteAllNodes(&headNode);
 	headNode = newHeadNode;
 	_fileSize = getFileSizeFromList(headNode);
 
@@ -917,7 +918,7 @@ static void handleSigwinch(int signal)
 void runApp(TEXT *headNode, char *fileName)
 {
 	dataCopied cpyData = {NULL, {0, 0}, {0, 0}, false, false};
-	coordinates xy = {_margins.left + 1, 0};
+	coordinates xy = {_margins.left, 0};
 	updateCoordinatesInView(&headNode);
 	printText(headNode, xy);
 	_fileSize = getFileSizeFromList(headNode);
@@ -928,25 +929,25 @@ void runApp(TEXT *headNode, char *fileName)
 		xy = resizeWinOnSigwinch(headNode, xy);
 		switch (setMode(ch))
 		{
-		case EDIT:
-			xy = edit(&headNode, xy, ch);
-			break;
-		case SAVE:
-			save(headNode, fileName);
-			break;
-		case COPY:
-			cpyData = copy(cpyData, headNode, xy);
-			break;
-		case PASTE:
-			pasteCopiedlist(&headNode, cpyData.cpyList, xy);
-			break;
-		case OPEN_FILE:
-			headNode = openFile(headNode, fileName);
-			break;
-		case EXIT:
-			saveOnFileChange(headNode, fileName);
-			is_running = false;
-			break;
+			case EDIT:
+				xy = edit(&headNode, xy, ch);
+				break;
+			case SAVE:
+				save(headNode, fileName);
+				break;
+			case COPY:
+				cpyData = copy(cpyData, headNode, xy);
+				break;
+			case PASTE:
+				pasteCopiedlist(&headNode, cpyData.cpyList, xy);
+				break;
+			case OPEN_FILE:
+				headNode = openFile(headNode, fileName);
+				break;
+			case EXIT:
+				saveOnFileChange(headNode, fileName);
+				is_running = false;
+				break;
 		}
 
 		int newLines = countNewLinesInView(headNode);
@@ -958,5 +959,5 @@ void runApp(TEXT *headNode, char *fileName)
 		printText(headNode, xy);
 	}
 
-	deleteAllNodes(headNode);
+	deleteAllNodes(&headNode);
 }
