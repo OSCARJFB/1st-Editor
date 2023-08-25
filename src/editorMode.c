@@ -966,15 +966,6 @@ static void handleSigwinch(int signal)
 	}
 }
 
-
-void printAll(coordinates xy)
-{
-	clear();
-	printw("x %d y %d\n _view %d", xy.x, xy.y, _view);
-	refresh();
-        getch(); 	
-}
-
 /**
  * Run text editor mode. 
  * While looping switch user action. 
@@ -1021,7 +1012,6 @@ void runApp(TEXT *headNode, char *fileName)
 		updateCoordinatesInView(&headNode);
 		xy = updateXYOnNewLine(xy, ch, newLines);
 		xy = updateCursor(ch, xy);
-		//printAll(xy);
 		printText(headNode, xy);
 	}
 
