@@ -8,6 +8,14 @@
 
 #include "editorMode.h"
 
+textMargins _margins = {MARGIN_SPACE_2, 0, 0, 0};
+bool _sigwinchFlag = false;
+int _tabSize = 4;
+int _copySize = 0;
+int _viewStart = 0;
+int _view = 0;
+long _fileSize = 0;
+
 static TEXT *createNewNode(int ch);
 static coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, TEXT *last_node);
 static coordinates addNode(TEXT **headNode, int ch, coordinates xy);
@@ -29,24 +37,16 @@ static void updateMargins(int y, int ch, TEXT *headNode);
 static void handleSigwinch(int signal);
 static inline void setLeftMargin(int NewLines);
 static inline void setRightMargin(int y, TEXT *headNode);
-static inline void setBottomMargin(int y, TEXT *headNode);
+static inline void setBottomMargin(TEXT *headNode);
 static long getFileSizeFromList(TEXT *headNode);
 static int setMode(int ch);
 static int countNewLinesInView(TEXT *headNode);
 static char *newFileName(void);
 static char *saveListToBuffer(TEXT *headNode, long fileSize);
 
-textMargins _margins = {MARGIN_SPACE_2, 0, 0, 0};
-bool _sigwinchFlag = false;
-int _tabSize = 4;
-int _copySize = 0;
-int _viewStart = 0;
-int _view = 0;
-long _fileSize = 0;
-
 /**
- * Convert the buffer into a linked list.
- * The list is required when editing. 
+ * Converts text from a buffer into a linked list.
+ * The list is required when editing the text later on. 
  */
 void *createNodesFromBuffer(char *buffer, long fileSize)
 {
@@ -79,7 +79,7 @@ void *createNodesFromBuffer(char *buffer, long fileSize)
 
 /**
  * Counts the number of characters in the list.
- * This is necessary when converting the list into a single buffer for saving.
+ * This is necessary when converting the list into a a buffer which is done when saving the file.
  */
 static long getFileSizeFromList(TEXT *headNode)
 {
@@ -298,31 +298,26 @@ static coordinates addNode(TEXT **headNode, int ch, coordinates xy)
 		return onEditCoordinates(xy, ADD_FIRST_NODE, ch, NULL);
 	}
 
-	// Special case, if a newline is the first character in the list!
-	if ((*headNode)->prev == NULL && (*headNode)->next == NULL &&
-		xy.y == _margins.top && (*headNode)->ch == '\n')
+	// Add the node and set it as the new headNode of the list.
+	if (node->x == xy.x && node->y == xy.y && _viewStart == 0)
 	{
-		TEXT *node = *headNode;
 		node->prev = newNode;
 		*headNode = newNode;
 		newNode->next = node;
-		return onEditCoordinates(xy, ADD_FIRST_NODE, ch, node);
+		return onEditCoordinates(xy, ADD_HEAD_NODE, ch, node);
 	}
-
-	while (node->next != NULL)
-	{
-		// Add the node and set it as the new headNode of the list.
-		if (node->x == xy.x && node->y == xy.y && node->prev == NULL)
+	
+	// Add the node somewhere in the middle of the list.
+	int newLines = 0; 
+	while(node->next != NULL)
+	{	 
+		newLines += node->ch == '\n' ? 1 : 0;
+		node = node->next;
+		if(newLines < _viewStart)
 		{
-			node->prev = newNode;
-			*headNode = newNode;
-			newNode->next = node;
-			return onEditCoordinates(xy, ADD_HEAD_NODE, ch, node);
+			continue; 
 		}
 
-		node = node->next;
-
-		// Add the node somewhere in the middle of the list.
 		if (node->x == xy.x && node->y == xy.y && node->prev != NULL)
 		{
 			node->prev->next = newNode;
@@ -424,21 +419,21 @@ static coordinates deleteNode(TEXT **headNode, coordinates xy)
  */
 static void updateCoordinatesInView(TEXT **headNode)
 {
-	if (*headNode == NULL)
+	if(*headNode == NULL)
 	{
 		return;
 	}
 
 	int x = _margins.left, y = 0, newLines = 0, nLinesInView = 0;
-	for (TEXT *node = *headNode; node != NULL; node = node->next)
+	for(TEXT *node = *headNode; node != NULL; node = node->next)
 	{
-		if (newLines >= _viewStart)
+		if(newLines >= _viewStart)
 		{
 			nLinesInView += node->ch == '\n' ? 1 : 0;
 			node->x = x;
 			node->y = y;
 
-			if (node->ch == '\t')
+			if(node->ch == '\t')
 			{
 				x += _tabSize;
 			}
@@ -447,7 +442,7 @@ static void updateCoordinatesInView(TEXT **headNode)
 				++x;
 			}
 
-			if (node->ch == '\n')
+			if(node->ch == '\n')
 			{
 				x = _margins.left;
 				++y;
@@ -455,7 +450,7 @@ static void updateCoordinatesInView(TEXT **headNode)
 		}
 
 		newLines += node->ch == '\n' ? 1 : 0;
-		if (nLinesInView >= _view)
+		if(nLinesInView == _view)
 		{
 			break;
 		}
@@ -533,7 +528,7 @@ static char *saveCopiedText(TEXT *headNode, coordinates cpyStart, coordinates cp
 			}
 		}
 
-		// If true end of list is found.
+		// If true end of list was found.
 		if (headNode->x == cpyEnd.x && headNode->y == cpyEnd.y)
 		{
 			_copySize = i;
@@ -613,15 +608,14 @@ static int countNewLinesInView(TEXT *headNode)
 }
 
 /**
- * Prints all text from the TEXT list. 
- * Finally this function will also print the cursor at its current position. 
+ * Prints all the line numbers (starting at 1 if TEXT list is NULL) and the text from the TEXT list. 
+ * This function will also print the cursor at its current position. 
  */
 static void printText(TEXT *headNode, coordinates xy)
 {
-	int lineNumber = 0;
-	bool nlFlag = true;
+	int lineNumber = 0, nLinesInView = 0;
+	bool nlFlag = true, pFlag = true; 
 
-	// We need to clear terminal screen (empty) if no characters exists.
 	if (headNode == NULL)
 	{
 		clear();
@@ -631,12 +625,10 @@ static void printText(TEXT *headNode, coordinates xy)
 		return;
 	}
 
-	// Print the nodes at x and y position.
 	clear();
-	int nLinesInView = 0;
 	for (TEXT *node = headNode; node != NULL; node = node->next)
 	{
-		if (lineNumber >= _viewStart)
+		if (lineNumber >= _viewStart && pFlag)
 		{
 			if (nlFlag)
 			{
@@ -655,12 +647,18 @@ static void printText(TEXT *headNode, coordinates xy)
 
 		if (nLinesInView == _view)
 		{
-			break;
+			pFlag = false; 
+			if(node->ch == '\n')
+			{
+				break; 
+			}
+			mvwaddch(stdscr, node->y, node->x, node->ch);
 		}
 	}
 
 	if (nlFlag && nLinesInView != _view)
 	{
+
 		printw("%d", lineNumber + 1);
 	}
 
@@ -739,15 +737,11 @@ static inline void setRightMargin(int y, TEXT *node)
 
 /**
  * Set the bottom margin.
- * This margin will prevent the user from navigating downwards outside of bounds. 
+ * This margin will prevent the user from navigating downwards outside the bounds of the TEXT list. 
  */
-static inline void setBottomMargin(int newLines, TEXT *node)
+static inline void setBottomMargin(TEXT *node)
 {
-	if (newLines >= _viewStart)
-	{
-		_margins.bottom = node->y;
-	}
-
+	_margins.bottom = node->y;
 	if (node->next == NULL && node->ch == '\n')
 	{
 		_margins.bottom += _margins.bottom < _view ? 1 : 0;
@@ -755,7 +749,7 @@ static inline void setBottomMargin(int newLines, TEXT *node)
 }
 
 /**
- * This function will call for an update of the terminal margins.
+ * This function will call for an update of the terminals margins.
  * It fetches and sets left, right, and bottom margin (top is always 0).
  */
 static void updateMargins(int y, int ch, TEXT *headNode)
@@ -778,26 +772,20 @@ static void updateMargins(int y, int ch, TEXT *headNode)
 	int newLines = 0;
 	for (TEXT *node = headNode; node != NULL; node = node->next)
 	{
-		if (node == NULL)
-		{
-			break;
-		}
-
-		setBottomMargin(newLines, node);
-		setRightMargin(y, node);
-
 		newLines += node->ch == '\n' ? 1 : 0;
-		if (newLines >= _view + _viewStart)
-		{
+		if (newLines >= _view + _viewStart  || node->next == NULL)
+		{	
+			setLeftMargin(newLines);
+			setBottomMargin(node);
 			break;
 		}
+		setRightMargin(y, node);
 	}
-	setLeftMargin(newLines);
 }
 
 /**
- * When using the arrow keys, this function will update cursor position. This will ensure the cursor remain at the correct location. 
- * Any updated position must follow the rules set by the terminal margins.
+ * When using the arrow keys, this function will update the cursor position. This will ensure the cursor is placed at the correct location. 
+ * Any update made of the cursor position must follow the bounderies set by the terminal margins.
  */
 static coordinates updateCursor(int ch, coordinates xy)
 {
@@ -807,9 +795,9 @@ static coordinates updateCursor(int ch, coordinates xy)
 			xy.y += xy.y > _margins.top ? -1 : 0;
 			xy.x = xy.x > _margins.right ? _margins.right : xy.x;
 			break;
-		case KEY_DOWN:
-			xy.x = xy.x > _margins.right && xy.y < _margins.bottom ? _margins.right : xy.x;
-			xy.y += xy.y < _margins.bottom ? 1 : 0;
+		case KEY_DOWN: 			
+			xy.x = xy.x > _margins.right && xy.y < _margins.bottom ? _margins.right : xy.x; // Need to set X here before Y (don't swap).
+			xy.y += xy.y < _margins.bottom && xy.y < _view ? 1 : 0;
 			break;
 		case KEY_LEFT:
 			xy.x += xy.x > _margins.left ? -1 : 0;
@@ -844,8 +832,6 @@ static coordinates edit(TEXT **headNode, coordinates xy, int ch)
  * Control function for copy / marking text.
  * This function requests a start and end location in the terminal.
  * Finally it will save the sub list found between these coordinates.
- * 
- * TODO This function can't handle paging of viewport. 
  */
 static dataCopied copy(dataCopied cpyData, TEXT *headNode, coordinates xy)
 {
@@ -981,6 +967,14 @@ static void handleSigwinch(int signal)
 }
 
 
+void printAll(coordinates xy)
+{
+	clear();
+	printw("x %d y %d\n _view %d", xy.x, xy.y, _view);
+	refresh();
+        getch(); 	
+}
+
 /**
  * Run text editor mode. 
  * While looping switch user action. 
@@ -1019,13 +1013,15 @@ void runApp(TEXT *headNode, char *fileName)
 				is_running = false;
 				break;
 		}
-
+		
+		// This is the correct order of execution. 
 		int newLines = countNewLinesInView(headNode);
-		updateMargins(xy.y, ch, headNode);
 		updateViewPort(xy, ch, newLines);
+		updateMargins(xy.y, ch, headNode);
 		updateCoordinatesInView(&headNode);
 		xy = updateXYOnNewLine(xy, ch, newLines);
 		xy = updateCursor(ch, xy);
+		//printAll(xy);
 		printText(headNode, xy);
 	}
 

@@ -23,4 +23,4 @@ release:
 	$(cc) main.c allocHandler.c fileHandler.c editorMode.c $(cflags_release) -lncurses -o ob
 
 clean:
-	rm -rf *.o && rm -rf *.s
+	rm *.o && rm *.s

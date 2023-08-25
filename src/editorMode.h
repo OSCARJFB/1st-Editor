@@ -85,13 +85,6 @@ enum state
 	DEL_AT_END
 };
 
-extern textMargins _margins;
-extern int _tabSize;
-extern int _copySize;
-extern int _viewStart;
-extern int _view;
-extern long _fileSize;
-
 void *createNodesFromBuffer(char *buffer, long fileSize);
 void runApp(TEXT *headNode, char *fileName);
 
