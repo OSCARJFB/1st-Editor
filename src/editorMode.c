@@ -343,7 +343,7 @@ static coordinates addNode(TEXT **headNode, int ch, coordinates xy)
 static coordinates deleteNode(TEXT **headNode, coordinates xy)
 {
 	// We can't free/delete a node which is NULL or if at end of coordinates.
-	if (*headNode == NULL || (xy.x == _margins.left && xy.y == 0))
+	if (*headNode == NULL || (_viewStart == 0 && xy.y == 0 && xy.x == _margins.left))
 	{
 		return xy;
 	}
