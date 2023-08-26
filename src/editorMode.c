@@ -308,8 +308,7 @@ static coordinates addNode(TEXT **headNode, int ch, coordinates xy)
 	}
 	
 	// Add the node somewhere in the middle of the list.
-	int newLines = 0; 
-	while(node->next != NULL)
+	for(int newLines = 0; node->next != NULL;)
 	{	 
 		newLines += node->ch == '\n' ? 1 : 0;
 		node = node->next;
@@ -343,37 +342,41 @@ static coordinates addNode(TEXT **headNode, int ch, coordinates xy)
 static coordinates deleteNode(TEXT **headNode, coordinates xy)
 {
 	// We can't free/delete a node which is NULL or if at end of coordinates.
-	if (*headNode == NULL || (xy.x == _margins.left && xy.y == 0))
+	if (*headNode == NULL || (_viewStart == 0 && xy.y == 0 && xy.x == _margins.left))
 	{
 		return xy;
 	}
 
 	bool isEndNode = true;
-	TEXT *del_node = *headNode, *temp_node = NULL;
+	TEXT *node = *headNode, *temp_node = NULL;
 
 	// Find the node to be deleted.
-	while (del_node->next != NULL)
-	{
-		// Is a node in the middle of the list.
-		if (del_node->x == xy.x && del_node->y == xy.y)
+	for(int newLines = 0; node->next != NULL; node = node->next)
+	{	 
+		newLines += node->ch == '\n' ? 1 : 0;
+		if(newLines < _viewStart)
 		{
-			del_node = del_node->prev;
+			continue; 
+		}		
+		
+		// Is a node in the middle of the list.
+		if (node->x == xy.x && node->y == xy.y)
+		{
+			node = node->prev;
 			isEndNode = false;
 			break;
 		}
 
 		// Is the node just before the last node in the list.
-		if (del_node->next->x == xy.x && del_node->next->y == xy.y && del_node->next->next == NULL)
+		if (node->next->x == xy.x && node->next->y == xy.y && node->next->next == NULL)
 		{
 			isEndNode = false;
 			break;
 		}
-
-		del_node = del_node->next;
 	}
 
 	// If both prev and next are NULL this is the only node in the list.
-	if (del_node->prev == NULL && del_node->next == NULL)
+	if (node->prev == NULL && node->next == NULL)
 	{
 		xy = onEditCoordinates(xy, DEL_AT_END, 0, NULL);
 		free(*headNode);
@@ -384,29 +387,29 @@ static coordinates deleteNode(TEXT **headNode, coordinates xy)
 	// Adjust the linking of nodes depending on it being the last node or a node in the middle of the list.
 	if (isEndNode)
 	{
-		del_node->prev->next = NULL;
+		node->prev->next = NULL;
 	}
 	else if (!isEndNode)
 	{
-		temp_node = del_node;
+		temp_node = node;
 
-		if (del_node->prev != NULL && del_node->next != NULL)
+		if (node->prev != NULL && node->next != NULL)
 		{
 			temp_node->prev->next = temp_node->next;
 			temp_node->next->prev = temp_node->prev;
 		}
-		else if (del_node->prev == NULL && del_node->next != NULL)
+		else if (node->prev == NULL && node->next != NULL)
 		{
 			temp_node->next->prev = NULL;
 			*headNode = temp_node->next;
 		}
 	}
 
-	if (del_node != NULL)
+	if (node != NULL)
 	{
-		xy = onEditCoordinates(xy, DEL_NODE, 0, del_node);
-		free(del_node);
-		del_node = NULL;
+		xy = onEditCoordinates(xy, DEL_NODE, 0, node);
+		free(node);
+		node = NULL;
 	}
 
 	return xy;
@@ -862,7 +865,7 @@ static void updateViewPort(coordinates xy, int ch, int newLines)
 	{
 		++_viewStart;
 	}
-	else if (newLines >= _view && ch == KEY_BACKSPACE)
+	else if (newLines >= _view - 1 && _viewStart != 0 && ch == KEY_BACKSPACE)
 	{
 		--_viewStart;
 	}
@@ -966,15 +969,6 @@ static void handleSigwinch(int signal)
 	}
 }
 
-
-void printAll(coordinates xy)
-{
-	clear();
-	printw("x %d y %d\n _view %d", xy.x, xy.y, _view);
-	refresh();
-        getch(); 	
-}
-
 /**
  * Run text editor mode. 
  * While looping switch user action. 
@@ -1021,7 +1015,6 @@ void runApp(TEXT *headNode, char *fileName)
 		updateCoordinatesInView(&headNode);
 		xy = updateXYOnNewLine(xy, ch, newLines);
 		xy = updateCursor(ch, xy);
-		//printAll(xy);
 		printText(headNode, xy);
 	}
 
