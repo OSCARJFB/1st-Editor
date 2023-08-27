@@ -695,6 +695,29 @@ static int setMode(int ch)
 }
 
 /**
+ * When left margins is changes the cursor must also be updated.
+ * The update should be calculated by looking at the difference of the old and new left margin.
+ */
+static coordinates onLeftMarginChange(coordinates xy)
+{
+	static int oldMargin = MARGIN_SPACE_3;
+	if(oldMargin < _margins.left)
+	{
+		int diff = _margins.left - oldMargin;
+		xy.x += diff;
+		oldMargin = _margins.left;
+	}
+	else if(oldMargin > _margins.left)
+	{
+		int diff = oldMargin - _margins.left;
+		xy.x -= diff;
+		oldMargin = _margins.left;
+	}
+
+	return xy; 
+}
+
+/**
  * This function will set the left margin. 
  * The size of the left margin is decided depending on the amount of rows in the file.  
  */
@@ -809,7 +832,6 @@ static coordinates updateCursor(int ch, coordinates xy)
 			xy.x += xy.x < _margins.right ? 1 : 0;
 			break;
 	}
-
 	return xy;
 }
 
@@ -1015,6 +1037,7 @@ void runApp(TEXT *headNode, char *fileName)
 		updateCoordinatesInView(&headNode);
 		xy = updateXYOnNewLine(xy, ch, newLines);
 		xy = updateCursor(ch, xy);
+		xy = onLeftMarginChange(xy);
 		printText(headNode, xy);
 	}
 
