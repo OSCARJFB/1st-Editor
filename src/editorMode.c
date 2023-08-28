@@ -257,7 +257,7 @@ static coordinates onEditCoordinates(coordinates xy, int sFlag, int ch, TEXT *no
 	switch(sFlag)
 	{
 		case ADD_FIRST_NODE:
-			xy.x = ch == '\n' ? _margins.left : _margins.left + 2;
+			xy.x = ch == '\n' ? _margins.left : _margins.left + 1;
 			xy.y += ch == '\n' ? 1 : 0;
 			break;
 		case ADD_HEAD_NODE:
