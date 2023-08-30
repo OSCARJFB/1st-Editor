@@ -22,8 +22,6 @@ static TEXT *deleteNode(TEXT **headNode, coordinates xy);
 static TEXT *edit(TEXT **headNode, coordinates xy, int ch);
 static coordinates updateCursor(int ch, coordinates xy, TEXT *editedNode, TEXT *headNode);
 static coordinates resizeWinOnSigwinch(TEXT *headNode, coordinates xy);
-static coordinates updateOnLeftMarginChange(coordinates xy); 
-static inline coordinates updateXYOnNewLine(coordinates xy, int ch, int newLines);
 static dataCopied getCopyStart(dataCopied cp_data, coordinates xy);
 static dataCopied getCopyEnd(dataCopied cp_data, coordinates xy);
 static dataCopied copy(dataCopied cpyData, TEXT *headNode, coordinates xy);
@@ -34,6 +32,7 @@ static void deleteAllNodes(TEXT **headNode);
 static void updateCoordinatesInView(TEXT **headNode);
 static void printText(TEXT *headNode, coordinates xy);
 static void updateMargins(int y, int ch, TEXT *headNode);
+static void updateViewPort(coordinates xy, int ch, TEXT *headNode);
 static void handleSigwinch(int signal);
 static inline void setLeftMargin(int NewLines);
 static inline void setRightMargin(int y, TEXT *headNode);
@@ -547,26 +546,6 @@ static void pasteCopiedlist(TEXT **headNode, char *cpyList, coordinates xy)
 }
 
 /**
- * Count how many newlines that exists within the bounds of the terminal view.
- * This is usefull to help determine when we've added more items to the TEXT list than may be viewed in the terminal. 
- */
-static int countNewLinesInView(TEXT *headNode)
-{
-	int newlines = 0;
-
-	while (headNode != NULL && newlines != _view + 1)
-	{
-		if (headNode->ch == '\n')
-		{
-			++newlines;
-		}
-
-		headNode = headNode->next;
-	}
-	return newlines;
-}
-
-/**
  * Prints all the line numbers (starting at 1 if TEXT list is NULL) and the text from the TEXT list. 
  * This function will also print the cursor at its current position. 
  */
@@ -648,29 +627,6 @@ static int setMode(int ch)
 	}
 
 	return EDIT;
-}
-
-/**
- * When left margins is changes the cursor must also be updated.
- * The update should be calculated by looking at the difference of the old and new left margin.
- */
-static coordinates updateOnLeftMarginChange(coordinates xy)
-{
-	static int oldMargin = MARGIN_SPACE_3;
-	if(oldMargin < _margins.left)
-	{
-		int diff = _margins.left - oldMargin;
-		xy.x += diff;
-		oldMargin = _margins.left;
-	}
-	else if(oldMargin > _margins.left)
-	{
-		int diff = oldMargin - _margins.left;
-		xy.x -= diff;
-		oldMargin = _margins.left;
-	}
-
-	return xy; 
 }
 
 /**
@@ -771,7 +727,7 @@ static void updateMargins(int y, int ch, TEXT *headNode)
  */
 static coordinates updateCursor(int ch, coordinates xy, TEXT *editedNode, TEXT *headNode)
 {
-	if(headNode == NULL || editedNode == NULL)
+	if(headNode == NULL)
 	{
 		xy.x = _margins.left;
 		xy.y = 0;
@@ -786,7 +742,7 @@ static coordinates updateCursor(int ch, coordinates xy, TEXT *editedNode, TEXT *
 			break;
 		case KEY_DOWN: // Need to set X here before Y (don't swap).
 			xy.x = xy.x > _margins.right && xy.y < _margins.bottom ? _margins.right : xy.x; 
-			xy.y += xy.y < _margins.bottom && xy.y ? 1 : 0;
+			xy.y += xy.y < _margins.bottom && xy.y < _view ? 1 : 0;
 			break;
 		case KEY_LEFT:
 			xy.x += xy.x > _margins.left ? -1 : 0;
@@ -795,12 +751,37 @@ static coordinates updateCursor(int ch, coordinates xy, TEXT *editedNode, TEXT *
 			xy.x += xy.x < _margins.right ? 1 : 0;
 			break;
 		case KEY_BACKSPACE:
-			xy.x = editedNode->x;
-			xy.y = editedNode->y; 
+			if(editedNode == NULL)
+			{
+				return xy; 
+			}
+			
+			if(editedNode->ch == '\t')
+			{
+				xy.x -= _tabSize;
+				xy.y = editedNode->y;
+				return xy; 
+			}
+
+			xy.x = editedNode->ch == '\n' ? editedNode->x : editedNode->x + 1;
+			xy.y = editedNode->ch == '\n' ? editedNode->y + 1 : editedNode->y; 
 			break;
 		default: 
-			xy.x = editedNode->x + 1;
-			xy.y = editedNode->y; 
+			if(editedNode == NULL)
+			{
+				return xy; 
+			}
+
+			if(editedNode->ch == '\t')
+			{
+				xy.x += _tabSize;
+				xy.y = editedNode->y;
+				return xy; 
+			}
+
+			xy.x = editedNode->ch == '\n' ? _margins.left : editedNode->x + 1;
+			xy.y = editedNode->ch == '\n' ? editedNode->y + 1 : editedNode->y; 
+			xy.y += _viewStart > 0 && editedNode->ch == '\n' ? -1 : 0;  
 			break; 
 	}
 	return xy;
@@ -850,11 +831,33 @@ static dataCopied copy(dataCopied cpyData, TEXT *headNode, coordinates xy)
 }
 
 /**
+ * Count how many newlines that exists within the bounds of the terminal view.
+ * This is usefull to help determine when we've added more items to the TEXT list than may be viewed in the terminal. 
+ */
+static int countNewLinesInView(TEXT *headNode)
+{
+	int newlines = 0;
+
+	while (headNode != NULL && newlines != _view + 1)
+	{
+		if (headNode->ch == '\n')
+		{
+			++newlines;
+		}
+
+		headNode = headNode->next;
+	}
+	return newlines;
+}
+
+
+/**
  * Update view port of the text.
  * This could be seen as some kind of paging making editing possible outside of terminal max bounds for xy.
  */
-static void updateViewPort(coordinates xy, int ch, int newLines)
+static void updateViewPort(coordinates xy, int ch, TEXT *headNode)
 {
+	int newLines = countNewLinesInView(headNode); 
 	if (newLines >= _view && ch == '\n')
 	{
 		++_viewStart;
@@ -909,20 +912,6 @@ static TEXT *openFile(TEXT *headNode, char *fileName)
 }
 
 /**
- * If a newline char is entered. 
- * Make sure we don't put the cursor out of bounds of the view. 
- */
-static inline coordinates updateXYOnNewLine(coordinates xy, int ch, int newLines)
-{
-	if (ch == '\n' && newLines >= _view)
-	{
-		--xy.y;
-	}
-
-	return xy;
-}
-
-/**
  * Update the coordinates of the terminal on resize signal. 
  * This will hopefully set the new view coordinates within the bounds of the terminal. 
  */
@@ -971,7 +960,7 @@ void runApp(TEXT *headNode, char *fileName)
 {
 	TEXT *editedNode = NULL;
 	dataCopied cpyData = {NULL, {0, 0}, {0, 0}, false, false};
-	coordinates xy = {_margins.left + 2, 0};
+	coordinates xy = {_margins.left + 1, 0};
 	updateCoordinatesInView(&headNode);
 	printText(headNode, xy);
 	_fileSize = getFileSizeFromList(headNode);
@@ -1004,13 +993,10 @@ void runApp(TEXT *headNode, char *fileName)
 		}
 		
 		// This is the correct order of execution. 
-		int newLines = countNewLinesInView(headNode);
-		updateViewPort(xy, ch, newLines);
+		updateViewPort(xy, ch, headNode);
 		updateMargins(xy.y, ch, headNode);
 		updateCoordinatesInView(&headNode);
-		xy = updateXYOnNewLine(xy, ch, newLines);
 		xy = updateCursor(ch, xy, editedNode, headNode);
-		xy = updateOnLeftMarginChange(xy);
 		printText(headNode, xy);
 	}
 
