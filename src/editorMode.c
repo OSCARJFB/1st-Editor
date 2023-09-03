@@ -781,7 +781,6 @@ static coordinates updateCursor(int ch, coordinates xy, TEXT *editedNode, TEXT *
 
 			xy.x = editedNode->ch == '\n' ? _margins.left : editedNode->x + 1;
 			xy.y = editedNode->ch == '\n' ? editedNode->y + 1 : editedNode->y; 
-			xy.y += _viewStart > 0 && editedNode->ch == '\n' ? -1 : 0;  
 			break; 
 	}
 	return xy;
@@ -942,7 +941,7 @@ static coordinates resizeWinOnSigwinch(TEXT *headNode, coordinates xy)
 
 /**
  * Check for SIGWINCH signal.
- * If received set the flag to true which enable resize of terminal logic. 
+ * If received set the flag to true which enables call for terminal resize. 
  */
 static void handleSigwinch(int signal)
 {
@@ -961,6 +960,7 @@ void runApp(TEXT *headNode, char *fileName)
 	TEXT *editedNode = NULL;
 	dataCopied cpyData = {NULL, {0, 0}, {0, 0}, false, false};
 	coordinates xy = {_margins.left + 1, 0};
+	
 	updateCoordinatesInView(&headNode);
 	printText(headNode, xy);
 	_fileSize = getFileSizeFromList(headNode);
