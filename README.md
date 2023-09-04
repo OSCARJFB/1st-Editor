@@ -11,4 +11,5 @@ COMMAND LIST:
           The reason for this is to allow for multiple pastes.  
 
 BUGS/KNOWN ISSUES:
-- Tab is not working correctly.
+- When deleting several nodes and reaching head node, if any node remain cursor may end up at the end of the list. it should stay firm at location 0,0
+- Arrow key down does not work when paging, (in progress)
