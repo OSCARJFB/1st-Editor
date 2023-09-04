@@ -32,7 +32,7 @@ static void deleteAllNodes(TEXT **headNode);
 static void updateCoordinatesInView(TEXT **headNode);
 static void printText(TEXT *headNode, coordinates xy);
 static void updateMargins(int y, int ch, TEXT *headNode);
-static void updateViewPort(coordinates xy, int ch, TEXT *headNode);
+static void updateViewPort(coordinates xy, int ch, TEXT *headNode, TEXT *editedNode);
 static void handleSigwinch(int signal);
 static inline void setLeftMargin(int NewLines);
 static inline void setRightMargin(int y, TEXT *headNode);
@@ -750,38 +750,29 @@ static coordinates updateCursor(int ch, coordinates xy, TEXT *editedNode, TEXT *
 		case KEY_RIGHT:
 			xy.x += xy.x < _margins.right ? 1 : 0;
 			break;
-		case KEY_BACKSPACE:
+		default:
 			if(editedNode == NULL)
 			{
 				return xy; 
 			}
 			
 			if(editedNode->ch == '\t')
-			{
-				xy.x -= _tabSize;
-				xy.y = editedNode->y;
-				return xy; 
-			}
-
-			xy.x = editedNode->ch == '\n' ? editedNode->x : editedNode->x + 1;
-			xy.y = editedNode->ch == '\n' ? editedNode->y + 1 : editedNode->y; 
-			break;
-		default: 
-			if(editedNode == NULL)
-			{
-				return xy; 
-			}
-
-			if(editedNode->ch == '\t')
-			{
-				xy.x += _tabSize;
+			{	
+				if(ch == KEY_BACKSPACE)
+				{	
+					xy.x -= _tabSize;
+				}
+				else
+				{
+					xy.x += _tabSize;
+				}
 				xy.y = editedNode->y;
 				return xy; 
 			}
 
 			xy.x = editedNode->ch == '\n' ? _margins.left : editedNode->x + 1;
-			xy.y = editedNode->ch == '\n' ? editedNode->y + 1 : editedNode->y; 
-			break; 
+			xy.y = editedNode->ch == '\n' ? editedNode->y + 1 : editedNode->y;
+			break;
 	}
 	return xy;
 }
@@ -792,7 +783,7 @@ static coordinates updateCursor(int ch, coordinates xy, TEXT *editedNode, TEXT *
  */
 static TEXT *edit(TEXT **headNode, coordinates xy, int ch)
 {
-	TEXT *node = NULL; 
+	static TEXT *node = NULL; 
 	if(ch == KEY_BACKSPACE)
 	{
 		node = deleteNode(headNode, xy);
@@ -850,26 +841,40 @@ static int countNewLinesInView(TEXT *headNode)
 }
 
 
+static bool isEndNode(TEXT *editedNode)
+{
+	for(TEXT *node = editedNode; node != NULL && node->next != NULL; node = node->next)
+	{
+		if(node->y > _view)
+		{
+			return false;
+		}
+	}
+
+	return true; 
+}
+
+
 /**
  * Update view port of the text.
  * This could be seen as some kind of paging making editing possible outside of terminal max bounds for xy.
  */
-static void updateViewPort(coordinates xy, int ch, TEXT *headNode)
+static void updateViewPort(coordinates xy, int ch, TEXT *headNode, TEXT *editedNode)
 {
 	int newLines = countNewLinesInView(headNode); 
-	if (newLines >= _view && ch == '\n')
+	if(newLines >= _view && ch == '\n')
 	{
 		++_viewStart;
 	}
-	else if (newLines >= _view - 1 && _viewStart != 0 && ch == KEY_BACKSPACE)
+	else if(newLines >= _view - 1 && _viewStart != 0 && ch == KEY_BACKSPACE)
 	{
 		--_viewStart;
 	}
-	else if (xy.y <= 0 && _viewStart > 0 && ch == KEY_UP)
+	else if(xy.y <= 0 && _viewStart > 0 && ch == KEY_UP)
 	{
 		--_viewStart;
 	}
-	else if (xy.y < _view && newLines > _view && ch == KEY_DOWN) // ERROR HERE. This check won't prevent us from navigating out of bounds.
+	else if(xy.y < _view && newLines > _view && !isEndNode(editedNode) && ch == KEY_DOWN) // ERROR HERE. This check won't prevent us from navigating out of bounds.
 	{
 		++_viewStart;
 	}
@@ -993,7 +998,7 @@ void runApp(TEXT *headNode, char *fileName)
 		}
 		
 		// This is the correct order of execution. 
-		updateViewPort(xy, ch, headNode);
+		updateViewPort(xy, ch, headNode, editedNode);
 		updateMargins(xy.y, ch, headNode);
 		updateCoordinatesInView(&headNode);
 		xy = updateCursor(ch, xy, editedNode, headNode);
