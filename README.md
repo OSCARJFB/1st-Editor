@@ -2,14 +2,23 @@
 
 This is a terminal-based text editor
 
-COMMAND LIST: 
-    ESC + S = save mode, which enables saving of a file.  
-    ESC + e = exit mode, this will exit the application (without saving).
-    ESC + c = copy mode, When first pressed the cursers current coordinates will be stored, once pressed again, 
-                the second curser coordinate is stored. All text between the coordinates points will be stored in a buffer. 
-    ESC + p = paste mode, this command will paste the buffer saved from copy mode, the buffer will remain until ESC + c is pressed again. 
-          The reason for this is to allow for multiple pastes.  
+COMMAND LIST:
+ 
+    	- ESC + S = save mode, which enables saving of a file. 
+ 
+    	- ESC + e = exit mode, this will exit the application (without saving).
+
+    	- ESC + c = copy mode, When first pressed the cursers current coordinates will be stored, once pressed again, 
+		the second curser coordinate is stored. All text between the coordinates points will be stored in a buffer. 
+
+    	- ESC + p = paste mode, this command will paste the buffer saved from copy mode, the buffer will remain until ESC + c is pressed again. 
+		The reason for this is to allow for multiple pastes.  
 
 BUGS/KNOWN ISSUES:
-- When deleting several nodes and reaching head node, if any node remain cursor may end up at the end of the list. it should stay firm at location 0,0
-- Arrow key down does not work when paging, (in progress)
+
+	- When delete is done on several nodes reaching the head node (begining of the doc), 
+		if any node remain, cursor may end up at the end of the list. it should stay firm at location 0,0 until addNode is called. 
+
+	- When using KEY_DOWN at the view, on some occasions if next action is to add text, the text will be written to the newline outside of paging view.  
+
+	- Deleting a tab character may result in cursor ending up at strange location.

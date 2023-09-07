@@ -19,6 +19,7 @@ long _fileSize = 0;
 static TEXT *createNewNode(int ch);
 static TEXT *addNode(TEXT **headNode, int ch, coordinates xy);
 static TEXT *deleteNode(TEXT **headNode, coordinates xy);
+static TEXT *getViewStartNode(TEXT *headNode);
 static TEXT *edit(TEXT **headNode, coordinates xy, int ch);
 static coordinates updateCursor(int ch, coordinates xy, TEXT *editedNode, TEXT *headNode);
 static coordinates resizeWinOnSigwinch(TEXT *headNode, coordinates xy);
@@ -34,6 +35,7 @@ static void printText(TEXT *headNode, coordinates xy);
 static void updateMargins(int y, int ch, TEXT *headNode);
 static void updateViewPort(coordinates xy, int ch, TEXT *headNode, TEXT *editedNode);
 static void handleSigwinch(int signal);
+static bool isEndNode(int y, TEXT *startNode);
 static inline void setLeftMargin(int NewLines);
 static inline void setRightMargin(int y, TEXT *headNode);
 static inline void setBottomMargin(TEXT *headNode);
@@ -841,11 +843,11 @@ static int countNewLinesInView(TEXT *headNode)
 }
 
 
-static bool isEndNode(TEXT *editedNode)
+static bool isEndNode(int y, TEXT *startNode)
 {
-	for(TEXT *node = editedNode; node != NULL && node->next != NULL; node = node->next)
+	for(TEXT *node = startNode; node != NULL; node = node->next)
 	{
-		if(node->y > _view)
+		if(node->ch == '\n' && node->y == y)
 		{
 			return false;
 		}
@@ -854,6 +856,20 @@ static bool isEndNode(TEXT *editedNode)
 	return true; 
 }
 
+static TEXT *getViewStartNode(TEXT *headNode)
+{
+	int newLines = 0; 
+	for(TEXT *node = headNode; node->next != NULL; node = node->next)
+	{
+		if(newLines == _viewStart) 
+		{
+			return node; 
+		}
+		newLines += node->ch == '\n' ? 1 : 0; 
+	}
+	
+	return NULL; 
+}
 
 /**
  * Update view port of the text.
@@ -874,9 +890,18 @@ static void updateViewPort(coordinates xy, int ch, TEXT *headNode, TEXT *editedN
 	{
 		--_viewStart;
 	}
-	else if(xy.y < _view && newLines > _view && !isEndNode(editedNode) && ch == KEY_DOWN) // ERROR HERE. This check won't prevent us from navigating out of bounds.
+	else if(ch == KEY_DOWN) // ERROR HERE. This check won't prevent us from navigating out of bounds.
 	{
-		++_viewStart;
+		TEXT *startNode = getViewStartNode(headNode);
+		if(startNode == NULL)
+		{
+			return;
+		}
+		
+		if(xy.y == _view - 1 && newLines > _view && !isEndNode(xy.y, editedNode))
+		{
+			++_viewStart;
+		}
 	}
 }
 
