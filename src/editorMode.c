@@ -306,7 +306,7 @@ static TEXT *deleteNode(TEXT **headNode, coordinates xy)
 	}
 	
 	bool isEndNode = true;
-	TEXT *node = *headNode, *temp_node = NULL;
+	TEXT *node = *headNode;
 	
 	// If both prev and next are NULL this is the only node in the list.
 	if (node->prev == NULL && node->next == NULL)
@@ -348,28 +348,22 @@ static TEXT *deleteNode(TEXT **headNode, coordinates xy)
 	}
 	else if (!isEndNode)
 	{
-		temp_node = node;
-
 		if (node->prev != NULL && node->next != NULL)
 		{
-			temp_node->prev->next = temp_node->next;
-			temp_node->next->prev = temp_node->prev;
+			node->prev->next = node->next;
+			node->next->prev = node->prev;
 		}
 		else if (node->prev == NULL && node->next != NULL)
 		{
-			temp_node->next->prev = NULL;
-			*headNode = temp_node->next;
+			node->next->prev = NULL;
+			*headNode = node->next;
 		}
 	}
 	
-	TEXT *prevNode = node->prev; 
-	if (node != NULL)
-	{
-		free(node);
-		node = NULL;
-	}
-
-	return prevNode;
+	TEXT *editedNode = node->prev == NULL ? NULL : node->prev; 
+	free(node);
+	node = NULL;
+	return editedNode;
 }
 
 /**
@@ -606,6 +600,9 @@ static void printText(TEXT *headNode, coordinates xy)
 	refresh();
 }
 
+/**
+ * Sets the mode when ESC is pressed to copy or paste.  
+ */
 static int setMode(int ch)
 {
 	if(ch != ESC_KEY)
@@ -755,6 +752,8 @@ static coordinates updateCursor(int ch, coordinates xy, TEXT *editedNode, TEXT *
 		default:
 			if(editedNode == NULL)
 			{
+				xy.x = _margins.left; 
+				xy.y = 0; 
 				return xy; 
 			}
 			
