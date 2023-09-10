@@ -16,9 +16,7 @@ COMMAND LIST:
 
 BUGS/KNOWN ISSUES:
 
-	- When delete is done on several nodes reaching the head node (begining of the doc), 
-		if any node remain, cursor may end up at the end of the list. it should stay firm at location 0,0 until addNode is called. 
-
 	- When using KEY_DOWN at the view, on some occasions if next action is to add text, the text will be written to the newline outside of paging view.  
 
 	- Deleting a tab character may result in cursor ending up at strange location.
+	
