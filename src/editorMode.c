@@ -80,7 +80,7 @@ void *createNodesFromBuffer(char *buffer, long fileSize)
 
 /**
  * Counts the number of characters in the list.
- * This is necessary when converting the list into a a buffer which is done when saving the file.
+ * This is necessary when converting the list into a buffer which is done when saving the file.
  */
 static long getFileSizeFromList(TEXT *headNode)
 {
@@ -108,10 +108,6 @@ static void save(TEXT *headNode, char *fileName)
 	FILE *fp = NULL;
 	_fileSize = getFileSizeFromList(headNode);
 	char *buffer = saveListToBuffer(headNode, _fileSize);
-	if (buffer == NULL)
-	{
-		return;
-	}
 
 	if (fileName == NULL)
 	{
@@ -132,6 +128,10 @@ static void save(TEXT *headNode, char *fileName)
 	buffer = NULL;
 }
 
+/**
+ * Will convert the TEXT list into a regular buffer,
+ * this buffer will be needed when saving the text. 
+ */
 static char *saveListToBuffer(TEXT *headNode, long fileSize)
 {
 	if (fileSize == 0)
@@ -139,17 +139,21 @@ static char *saveListToBuffer(TEXT *headNode, long fileSize)
 		return NULL;
 	}
 
-	char *buffer = memAlloc(malloc(fileSize * sizeof(char) + 1), fileSize * sizeof(char) + 1);
-	for (int i = 0; headNode != NULL && i < fileSize; headNode = headNode->next)
+	char *buffer = memAlloc(malloc((fileSize + 2) * sizeof(char)), fileSize * sizeof(char) + 1);
+	for (int i = 0; headNode != NULL && i <= fileSize; headNode = headNode->next)
 	{
 		buffer[i++] = headNode->ch;
 	}
 
-	buffer[fileSize] = '\0';
+	buffer[++fileSize] = '\0';
 
 	return buffer;
 }
 
+/**
+ * This function will check if any changes have been made to the file.
+ * If true it will ask if the user would like to save the file or not. 
+ */
 static void saveOnFileChange(TEXT *headNode, char *fileName)
 {
 	long currentFileSize = getFileSizeFromList(headNode);
@@ -601,7 +605,7 @@ static void printText(TEXT *headNode, coordinates xy)
 }
 
 /**
- * Sets the mode when ESC is pressed to copy or paste.  
+ * Sets the editor mode when ESC is pressed.  
  */
 static int setMode(int ch)
 {
