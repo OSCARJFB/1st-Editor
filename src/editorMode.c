@@ -885,7 +885,7 @@ static void updateViewPort(coordinates xy, int ch, TEXT *headNode, TEXT *editedN
 	{
 		++_viewStart;
 	}
-	else if(newLines >= _view - 1 && _viewStart != 0 && ch == KEY_BACKSPACE)
+	else if(newLines >= _view - 1 && _viewStart != 0 && ch == KEY_BACKSPACE && editedNode->ch == '\n')
 	{
 		--_viewStart;
 	}
