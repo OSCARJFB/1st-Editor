@@ -1,4 +1,4 @@
-# oscarjfb-editor
+# oscarjfb Editor
 
 ## This is a terminal-based text editor
 
