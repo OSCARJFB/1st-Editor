@@ -5,7 +5,8 @@ The editors basic features are working, you can load and edit files, navigate th
 However, there are some minor issues that are the legacy of poor design decisions. 
 Despite this, I think it's a cool little program and my basic goals with the project have been achieved. 
 
-=) 
+Conclusion:
+Use at will, but be aware that the application is not perfect! =) 
 
 ### COMMAND LIST:
  
