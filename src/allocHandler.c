@@ -1,7 +1,14 @@
+/*
+	Writen by: Oscar Bergström
+	https://github.com/OSCARJFB
+
+	MIT License
+	Copyright (c) 2023 Oscar Bergström
+*/
+
 #include "allocHandler.h"
 
 char *_backUpBuffer = NULL; 
-
 
 /** 
  * This function will allocate and store a backup. 
