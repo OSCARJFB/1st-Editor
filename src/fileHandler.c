@@ -16,6 +16,9 @@ static char *allocateBuffer(int fileSize);
 static void freeBuffer(char *buffer);
 static void loadBuffer(char *buffer, FILE *fp, long fileSize);
 
+/**
+ * This function will check any starting args.
+ */
 static FILE *getFileFromArg(int argc, char **argv)
 {
 	if (argc < 2)
@@ -32,6 +35,9 @@ static FILE *getFileFromArg(int argc, char **argv)
 	return fp;
 }
 
+/**
+ * Fetch the file pointer depending on the path pointer.
+ */
 static FILE *getFile(const char *path)
 {
 	FILE *fp = fopen(path, "r");
@@ -43,6 +49,9 @@ static FILE *getFile(const char *path)
 	return fp;
 }
 
+/**
+ * Close the file when loading into buffer is done. 
+ */
 static void closeFile(FILE *fp)
 {
 	if(fp == NULL)
@@ -54,6 +63,9 @@ static void closeFile(FILE *fp)
 	fp = NULL;
 }
 
+/**
+ * Check the file size.
+ */
 static long getFileSize(FILE *fp)
 {
 	if(fp == NULL)
@@ -76,6 +88,9 @@ static long getFileSize(FILE *fp)
 	return bufferSize;
 }
 
+/**
+ * Free the buffer.
+ */
 static char *allocateBuffer(int fileSize)
 {
 	if(fileSize == 0 || fileSize == -1)
@@ -87,6 +102,9 @@ static char *allocateBuffer(int fileSize)
 	return buffer;
 }
 
+/**
+ * Allocate a buffer having the size of the file.
+ */
 static void freeBuffer(char *buffer)
 {
 	if (buffer == NULL)
@@ -98,6 +116,9 @@ static void freeBuffer(char *buffer)
 	buffer = NULL;
 }
 
+/**
+ * Read the file into the buffer.
+ */
 static void loadBuffer(char *buffer, FILE *fp, long fileSize)
 {
 	if(buffer == NULL)
@@ -111,6 +132,9 @@ static void loadBuffer(char *buffer, FILE *fp, long fileSize)
 	};
 }
 
+/**
+ * ncurses settings.
+ */
 static void curseMode(bool isCurse)
 {
 	if (isCurse)
