@@ -19,7 +19,6 @@
 #include "allocHandler.h"
 
 #define ESC_KEY 27
-#define NO_KEY -1
 #define CPY_BUFFER_SIZE 1000
 #define FILENAME_SIZE 100
 
