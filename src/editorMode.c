@@ -22,7 +22,6 @@ static TEXT *deleteNode(TEXT **headNode, coordinates xy);
 static TEXT *getViewStartNode(TEXT *headNode);
 static TEXT *edit(TEXT **headNode, coordinates xy, int ch);
 static coordinates updateCursor(int ch, coordinates xy, TEXT *editedNode, TEXT *headNode);
-static coordinates resizeWinOnSigwinch(TEXT *headNode, coordinates xy);
 static dataCopied getCopyStart(dataCopied cp_data, coordinates xy);
 static dataCopied getCopyEnd(dataCopied cp_data, coordinates xy);
 static dataCopied copy(dataCopied cpyData, TEXT *headNode, coordinates xy);
@@ -34,7 +33,6 @@ static void updateCoordinatesInView(TEXT **headNode);
 static void printText(TEXT *headNode, coordinates xy);
 static void updateMargins(int y, int ch, TEXT *headNode);
 static void updateViewPort(coordinates xy, int ch, TEXT *headNode, TEXT *editedNode);
-static void handleSigwinch(int signal);
 static bool isEndNode(int y, TEXT *startNode);
 static inline void setLeftMargin(int NewLines);
 static inline void setRightMargin(int y, TEXT *headNode);
@@ -743,7 +741,7 @@ static coordinates updateCursor(int ch, coordinates xy, TEXT *editedNode, TEXT *
 			xy.y += xy.y > _margins.top ? -1 : 0;
 			xy.x = xy.x > _margins.right ? _margins.right : xy.x;
 			break;
-		case KEY_DOWN: // Need to set X here before Y (don't swap).
+		case KEY_DOWN:			
 			xy.x = xy.x > _margins.right && xy.y < _margins.bottom ? _margins.right : xy.x; 
 			xy.y += xy.y < _margins.bottom && xy.y < _view ? 1 : 0;
 			break;
@@ -765,7 +763,7 @@ static coordinates updateCursor(int ch, coordinates xy, TEXT *editedNode, TEXT *
 			{	
 				if(ch == KEY_BACKSPACE)
 				{	
-					xy.x -= _tabSize;
+					xy.x -= _tabSize + 1;
 				}
 				else
 				{
@@ -893,7 +891,7 @@ static void updateViewPort(coordinates xy, int ch, TEXT *headNode, TEXT *editedN
 	{
 		--_viewStart;
 	}
-	else if(ch == KEY_DOWN) // ERROR HERE. This check won't prevent us from navigating out of bounds.
+	else if(ch == KEY_DOWN) 	
 	{
 		TEXT *startNode = getViewStartNode(headNode);
 		if(startNode == NULL)
@@ -908,6 +906,10 @@ static void updateViewPort(coordinates xy, int ch, TEXT *headNode, TEXT *editedN
 	}
 }
 
+/**
+ * Open a new file at path location (fileName).
+ * Freeing old data and setting the new filesize. 
+ */
 static TEXT *openFile(TEXT *headNode, char *fileName)
 {
 	char *path = newFileName();
@@ -944,47 +946,6 @@ static TEXT *openFile(TEXT *headNode, char *fileName)
 }
 
 /**
- * Update the coordinates of the terminal on resize signal. 
- * This will hopefully set the new view coordinates within the bounds of the terminal. 
- */
-static coordinates resizeWinOnSigwinch(TEXT *headNode, coordinates xy)
-{
-	// If true resize terminal, redraw the screen.
-	if (_sigwinchFlag)
-	{
-		endwin();
-		refresh();
-		initscr();
-		if (xy.y > getmaxy(stdscr))
-		{
-			xy.y = getmaxy(stdscr) - 1;
-			xy.x = 0;
-		}
-		_view = getmaxy(stdscr);
-		printText(headNode, xy);
-		_sigwinchFlag = false;
-	}
-	else
-	{
-		_view = getmaxy(stdscr);
-	}
-
-	return xy;
-}
-
-/**
- * Check for SIGWINCH signal.
- * If received set the flag to true which enables call for terminal resize. 
- */
-static void handleSigwinch(int signal)
-{
-	if (signal == SIGWINCH)
-	{
-		_sigwinchFlag = true;
-	}
-}
-
-/**
  * Run text editor mode. 
  * While looping switch user action. 
  */
@@ -997,11 +958,11 @@ void runApp(TEXT *headNode, char *fileName)
 	updateCoordinatesInView(&headNode);
 	printText(headNode, xy);
 	_fileSize = getFileSizeFromList(headNode);
-	signal(SIGWINCH, handleSigwinch);
 
 	for (int ch = 0, is_running = true; is_running; ch = getch())
 	{
-		xy = resizeWinOnSigwinch(headNode, xy);
+		_view = getmaxy(stdscr); 
+
 		switch (setMode(ch))
 		{
 			case EDIT:
@@ -1025,10 +986,10 @@ void runApp(TEXT *headNode, char *fileName)
 				break;
 		}
 		
-		// This is the correct order of execution. 
 		updateViewPort(xy, ch, headNode, editedNode);
 		updateMargins(xy.y, ch, headNode);
 		updateCoordinatesInView(&headNode);
+		
 		xy = updateCursor(ch, xy, editedNode, headNode);
 		printText(headNode, xy);
 	}
