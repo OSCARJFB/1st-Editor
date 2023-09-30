@@ -482,9 +482,9 @@ static int setMode(int ch)
 	{
 		case 's':
 			return SAVE;
-		case 'c':
+		case 'y':
 			return COPY;
-		case 'v':
+		case 'p':
 			return PASTE;
 		case 'o':
 			return OPEN_FILE;
