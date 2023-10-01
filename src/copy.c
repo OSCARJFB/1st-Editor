@@ -10,14 +10,14 @@
 
 int _copySize = 0;
 
-static dataCopied getCopyStart(dataCopied cpyData, coordinates xy);
-static dataCopied getCopyEnd(dataCopied cpyData, coordinates xy);
+static inline  dataCopied startPoint(dataCopied cpyData, coordinates xy);
+static inline dataCopied endPoint(dataCopied cpyData, coordinates xy);
 static char *saveCopiedText(TEXT *headNode, coordinates cpyStart, coordinates cpyEnd);
 
 /**
- * This will set the start coordinate of copy.
+ * This will set the start coordinate.
  */
-static dataCopied getCopyStart(dataCopied cpyData, coordinates xy)
+static inline dataCopied startPoint(dataCopied cpyData, coordinates xy)
 {
 	if (cpyData.isStart)
 	{
@@ -32,9 +32,9 @@ static dataCopied getCopyStart(dataCopied cpyData, coordinates xy)
 }
 
 /**
- *  This will set the end coordinate for copy. 
+ *  This will set the end coordinate. 
  */
-static dataCopied getCopyEnd(dataCopied cpyData, coordinates xy)
+static inline dataCopied endPoint(dataCopied cpyData, coordinates xy)
 {
 	if (cpyData.isStart && cpyData.isEnd)
 	{
@@ -49,6 +49,25 @@ static dataCopied getCopyEnd(dataCopied cpyData, coordinates xy)
 	}
 
 	return cpyData;
+}
+
+//typedef struct dataCopied
+//{
+//	char *cpyList;
+//	coordinates cpyStart, cpyEnd;
+//	bool isStart, isEnd;
+//} dataCopied;
+
+/** 
+ * Deletes the copied list, 
+ * this is done when using the cut operation. 
+ */
+static void deleteCpyList(dataCopied cpyData, TEXT **headNode)
+{
+	for(TEXT *node = *headNode; node != NULL; node = node->next)
+	{
+		
+	}
 }
 
 /**
@@ -102,7 +121,7 @@ static char *saveCopiedText(TEXT *headNode, coordinates cpyStart, coordinates cp
  * Paste and line items to the TEXT list. 
  * Items will be pasted between xy -> xy. 
  */
-void pasteCopiedlist(TEXT **headNode, char *cpyList, coordinates xy)
+void paste(TEXT **headNode, char *cpyList, coordinates xy)
 {
 	if (*headNode == NULL || cpyList == NULL)
 	{
@@ -146,7 +165,6 @@ void pasteCopiedlist(TEXT **headNode, char *cpyList, coordinates xy)
 }
 
 /**
- * Control function for copy / marking text.
  * This function requests a start and end location in the terminal.
  * Finally it will save the sub list found between these coordinates.
  */
@@ -158,8 +176,31 @@ dataCopied copy(dataCopied cpyData, TEXT *headNode, coordinates xy)
 		cpyData.cpyList = NULL;
 	}
 
-	cpyData = getCopyStart(cpyData, xy);
-	cpyData = getCopyEnd(cpyData, xy);
+	cpyData = startPoint(cpyData, xy);
+	cpyData = endPoint(cpyData, xy);
+
+	if(!cpyData.isStart && !cpyData.isEnd)
+	{
+		cpyData.cpyList = saveCopiedText(headNode, cpyData.cpyStart, cpyData.cpyEnd);
+	}
+
+	return cpyData;
+}
+
+/**
+ * This function requests a start and end location in the terminal.
+ * Finally it will save the coordinates found between these characters and also remove the from the main list.
+ */
+dataCopied cut(dataCopied cpyData, TEXT **headNode, coordinates xy)
+{
+	if(cpyData.cpyList != NULL)
+	{
+		free(cpyData.cpyList);
+		cpyData.cpyList = NULL;
+	}
+
+	cpyData = startPoint(cpyData, xy);
+	cpyData = endPoint(cpyData, xy);
 
 	if(!cpyData.isStart && !cpyData.isEnd)
 	{

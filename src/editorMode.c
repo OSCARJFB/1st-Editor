@@ -9,7 +9,6 @@
 #include "editorMode.h"
 
 textMargins _margins = {MARGIN_SPACE_2, 0, 0, 0};
-bool _sigwinchFlag = false;
 int _tabSize = 4;
 int _viewStart = 0;
 int _view = 0;
@@ -486,6 +485,8 @@ static int setMode(int ch)
 			return COPY;
 		case 'p':
 			return PASTE;
+		case 'v':
+			return CUT;
 		case 'o':
 			return OPEN_FILE;
 		case 'e':
@@ -815,6 +816,9 @@ void runApp(TEXT *headNode, char *fileName)
 			case COPY:
 				cpyData = copy(cpyData, headNode, xy);
 				break;
+			case CUT:
+				cpyData = cut(cpyData, headNode, xy);
+				break; 
 			case PASTE:
 				pasteCopiedlist(&headNode, cpyData.cpyList, xy);
 				break;
