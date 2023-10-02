@@ -10,14 +10,17 @@ Use at will, but be aware that the application is not perfect! =)
 
 ### COMMAND LIST:
  
-    	- ESC + S = save mode, which enables saving of a file.  
+    	- ESC + S = save, which enables saving of a file.  
  
-    	- ESC + e = exit mode, this will exit the application (without saving).  
+    	- ESC + e = exit, this will exit the application (without saving).  
 
-    	- ESC + y = copy mode, When first pressed the cursers current coordinates will be stored, once pressed again, 
+    	- ESC + y = copy, When first pressed the cursers current coordinates will be stored, once pressed again, 
 		the second curser coordinate is stored. All text between the coordinates points will be stored in a buffer.  
 
-    	- ESC + p = paste mode, this command will paste the buffer saved from copy mode, the buffer will remain until ESC + c is pressed again. 
+	- ESC + d = Cut, this will enable cutting and pasting of text, once pressed again, 
+		the second curser coordinate is stored. All text between the coordinates points will be stored in a buffer and cut.	
+
+	- ESC + p = paste, this command will paste the buffer saved from copy mode, the buffer will remain until ESC + c is pressed again. 
 		The reason for this is to allow for multiple pastes.  
 
 	

@@ -52,6 +52,7 @@ enum mode
 	EDIT,
 	SAVE,
 	COPY,
+	CUT,
 	PASTE,
 	OPEN_FILE,
 	EXIT
