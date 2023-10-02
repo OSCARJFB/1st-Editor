@@ -1,9 +1,9 @@
 /*
-    Writen by: Oscar Bergström
-    https://github.com/OSCARJFB
+   Writen by: Oscar Bergström
+https://github.com/OSCARJFB
 
-    MIT License
-    Copyright (c) 2023 Oscar Bergström
+MIT License
+Copyright (c) 2023 Oscar Bergström
 */
 
 #include "copy.h"
@@ -51,22 +51,56 @@ static inline dataCopied endPoint(dataCopied cpyData, coordinates xy)
 	return cpyData;
 }
 
-//typedef struct dataCopied
-//{
-//	char *cpyList;
-//	coordinates cpyStart, cpyEnd;
-//	bool isStart, isEnd;
-//} dataCopied;
-
 /** 
  * Deletes the copied list, 
  * this is done when using the cut operation. 
  */
 static void deleteCpyList(dataCopied cpyData, TEXT **headNode)
 {
-	for(TEXT *node = *headNode; node != NULL; node = node->next)
+	TEXT *node = *headNode, *startNode = NULL, *endNode = NULL, *del = NULL; 
+
+	while(node != NULL)
 	{
-		
+		if(node->x == cpyData.cpyStart.x && node->y == cpyData.cpyStart.y)	
+		{
+			if(node->prev != NULL)
+			{
+				startNode = node->prev; 
+			}
+			break;
+		}
+		node = node->next; 
+	}
+
+	while(node != NULL)
+	{
+		if(node->x == cpyData.cpyEnd.x && node->y == cpyData.cpyEnd.y)	
+		{
+			if(node->next != NULL)
+			{
+				endNode = node->next; 
+			}
+			break;
+		}
+	
+		del = node; 
+		node = node->next;
+	      	free(del);
+		del = NULL; 	
+	}
+
+	if(endNode != NULL && startNode != NULL)
+	{
+		endNode->prev = startNode; 
+		startNode->next = endNode;
+	}
+	else if(endNode != NULL && startNode == NULL)
+	{
+		*headNode = endNode; 
+	}
+	else if(endNode == NULL && startNode != NULL)
+	{
+		*headNode = startNode; 
 	}
 }
 
@@ -204,7 +238,8 @@ dataCopied cut(dataCopied cpyData, TEXT **headNode, coordinates xy)
 
 	if(!cpyData.isStart && !cpyData.isEnd)
 	{
-		cpyData.cpyList = saveCopiedText(headNode, cpyData.cpyStart, cpyData.cpyEnd);
+		cpyData.cpyList = saveCopiedText(*headNode, cpyData.cpyStart, cpyData.cpyEnd);
+		deleteCpyList(cpyData, headNode); 
 	}
 
 	return cpyData;

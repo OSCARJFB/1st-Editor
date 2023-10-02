@@ -485,7 +485,7 @@ static int setMode(int ch)
 			return COPY;
 		case 'p':
 			return PASTE;
-		case 'v':
+		case 'd':
 			return CUT;
 		case 'o':
 			return OPEN_FILE;
@@ -817,10 +817,10 @@ void runApp(TEXT *headNode, char *fileName)
 				cpyData = copy(cpyData, headNode, xy);
 				break;
 			case CUT:
-				cpyData = cut(cpyData, headNode, xy);
+				cpyData = cut(cpyData, &headNode, xy);
 				break; 
 			case PASTE:
-				pasteCopiedlist(&headNode, cpyData.cpyList, xy);
+				paste(&headNode, cpyData.cpyList, xy);
 				break;
 			case OPEN_FILE:
 				headNode = openFile(headNode, fileName);
