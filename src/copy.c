@@ -1,9 +1,9 @@
 /*
-   Writen by: Oscar Bergström
-https://github.com/OSCARJFB
+   	Writen by: Oscar Bergström
+	https://github.com/OSCARJFB
 
-MIT License
-Copyright (c) 2023 Oscar Bergström
+	MIT License
+	Copyright (c) 2023 Oscar Bergström
 */
 
 #include "copy.h"
@@ -91,16 +91,16 @@ static void deleteCpyList(dataCopied cpyData, TEXT **headNode)
 
 	if(endNode != NULL && startNode != NULL)
 	{
-		endNode->prev = startNode; 
+		endNode->prev = startNode;
 		startNode->next = endNode;
 	}
 	else if(endNode != NULL && startNode == NULL)
 	{
-		*headNode = endNode; 
+		*headNode = endNode;
 	}
 	else if(endNode == NULL && startNode != NULL)
 	{
-		*headNode = startNode; 
+		*headNode = startNode;
 	}
 }
 
@@ -113,7 +113,8 @@ static char *saveCopiedText(TEXT *headNode, coordinates cpyStart, coordinates cp
 	char *cpyList = NULL;
 	int i = 0;
 	bool start_found = false;
-
+	
+	// Swap coordinates if text selection was done backwards.
 	if (cpyStart.y > cpyEnd.y || (cpyStart.y == cpyEnd.y && cpyStart.x > cpyEnd.x))
 	{
 		coordinates temp = cpyStart;
@@ -121,10 +122,11 @@ static char *saveCopiedText(TEXT *headNode, coordinates cpyStart, coordinates cp
 		cpyEnd = temp;
 	}
 
+	// Create a buffer. 
 	while (headNode != NULL)
 	{
 		// Start were copy point is found, add every node until the end of the list is found.
-		if (((headNode->x == cpyStart.x && headNode->y == cpyStart.y) || start_found))
+		if ((headNode->x == cpyStart.x && headNode->y == cpyStart.y) || start_found)
 		{
 			if (cpyList == NULL)
 			{
@@ -141,13 +143,13 @@ static char *saveCopiedText(TEXT *headNode, coordinates cpyStart, coordinates cp
 		// If true end of list was found.
 		if (headNode->x == cpyEnd.x && headNode->y == cpyEnd.y)
 		{
-			_copySize = i;
 			break;
 		}
 
 		headNode = headNode->next;
 	}
 
+	_copySize = i;
 	return cpyList;
 }
 
@@ -172,7 +174,7 @@ void paste(TEXT **headNode, char *cpyList, coordinates xy)
 		}
 	}
 
-	// Last character should not be a newline.
+	// First character should not be a newline.
 	if (preList->ch == '\n')
 	{
 		preList = preList->prev;
