@@ -2,7 +2,6 @@
 #define TEXTDATA_H
 
 #define ESC_KEY 27
-#define CPY_BUFFER_SIZE 1000
 #define FILENAME_SIZE 100
 
 typedef struct coordinates
@@ -19,9 +18,10 @@ typedef struct TEXT
 
 typedef struct dataCopied
 {
-	char *cpyList;
+	char *copiedList;
 	coordinates cpyStart, cpyEnd;
 	bool isStart, isEnd;
+	int copySize;
 } dataCopied;
 
 typedef struct textMargins
@@ -56,16 +56,6 @@ enum mode
 	PASTE,
 	OPEN_FILE,
 	EXIT
-};
-
-enum state
-{
-	ADD_FIRST_NODE,
-	ADD_HEAD_NODE,
-	ADD_MIDDLE_NODE,
-	ADD_END_NODE,
-	DEL_NODE,
-	DEL_AT_END
 };
 
 #endif
