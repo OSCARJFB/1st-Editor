@@ -794,7 +794,7 @@ static TEXT *openFile(TEXT *headNode, char *fileName)
 void runApp(TEXT *headNode, char *fileName)
 {
 	TEXT *editedNode = NULL;
-	dataCopied cpyData = {NULL, {0, 0}, {0, 0}, false, false};
+	dataCopied cpyData = {NULL, {0, 0}, {0, 0}, false, false, 0};
 	coordinates xy = {_margins.left + 1, 0};
 	
 	updateCoordinatesInView(&headNode);
@@ -820,7 +820,7 @@ void runApp(TEXT *headNode, char *fileName)
 				cpyData = cut(cpyData, &headNode, xy);
 				break; 
 			case PASTE:
-				paste(&headNode, cpyData.cpyList, xy);
+				paste(&headNode, cpyData, xy);
 				break;
 			case OPEN_FILE:
 				headNode = openFile(headNode, fileName);

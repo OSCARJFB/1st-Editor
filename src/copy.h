@@ -1,9 +1,9 @@
 /*
-    Writen by: Oscar Bergström
-    https://github.com/OSCARJFB
+    	Writen by: Oscar Bergström
+	https://github.com/OSCARJFB
 
-    MIT License
-    Copyright (c) 2023 Oscar Bergström
+    	MIT License
+    	Copyright (c) 2023 Oscar Bergström
 */
 
 #ifndef COPY_H
@@ -14,7 +14,7 @@
 #include "textData.h"
 #include "allocHandler.h"
 
-void paste(TEXT **headNode, char *cpyList, coordinates xy);
+void paste(TEXT **headNode, dataCopied cpyData, coordinates xy);
 dataCopied copy(dataCopied cpyData, TEXT *headNode, coordinates xy);
 dataCopied cut(dataCopied cpyData, TEXT **headNode, coordinates xy);
 
