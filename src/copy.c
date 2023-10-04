@@ -173,15 +173,8 @@ void paste(TEXT **headNode, dataCopied cpyData, coordinates xy)
 		}
 	}
 
-	// First character should not be a newline.
-	if (preList->ch == '\n')
-	{
-		preList = preList->prev;
-	}
-
-	TEXT *postList = preList->next;
-
 	// Create and chain each new node from the copy buffer.
+	TEXT *postList = preList->next;
 	for (int i = 0; i < cpyData.copySize; ++i)
 	{
 		TEXT *new_node = memAlloc(malloc(sizeof(TEXT)), sizeof(TEXT));
@@ -192,7 +185,7 @@ void paste(TEXT **headNode, dataCopied cpyData, coordinates xy)
 		preList = preList->next;
 	}
 
-	// If any part of the list is remaining chain it to the new list.
+	// If any part of the list in other words, we're not at the end of the list, chain the list together.
 	if (postList != NULL)
 	{
 		preList->next = postList;
