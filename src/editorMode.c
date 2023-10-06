@@ -804,31 +804,31 @@ void runApp(TEXT *headNode, char *fileName)
 	for (int ch = 0, is_running = true; is_running; ch = getch())
 	{
 		_view = getmaxy(stdscr); 
-
+		
 		switch (setMode(ch))
 		{
-			case EDIT:
+			case EDIT:  
 				editedNode = edit(&headNode, xy, ch);
 				break;
-			case SAVE:
+			case SAVE: 
 				save(headNode, fileName);
 				break;
-			case COPY:
+			case COPY: 
 				cpyData = copy(cpyData, headNode, xy);
-				break;
-			case CUT:
+				continue; 
+			case CUT: 
 				cpyData = cut(cpyData, &headNode, xy);
-				break; 
-			case PASTE:
+				continue;
+			case PASTE: 
 				paste(&headNode, cpyData, xy);
 				break;
-			case OPEN_FILE:
+			case OPEN_FILE:  
 				headNode = openFile(headNode, fileName);
 				break;
-			case EXIT:
+			case EXIT:  
 				saveOnFileChange(headNode, fileName);
 				is_running = false;
-				break;
+				continue; 
 		}
 		
 		updateViewPort(xy, ch, headNode, editedNode);
