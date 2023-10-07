@@ -50,14 +50,15 @@ static inline dataCopied endPoint(dataCopied cpyData, coordinates xy)
 }
 
 /** 
- * Deletes the copied list, 
- * this is done when using the cut operation. 
+ * Delete all items from the text list which are in-between the start/end point. 
+ * This is done when using the cut operation. 
  */
 static void deleteCpyList(dataCopied cpyData, TEXT **headNode)
 {
 	TEXT *node = *headNode, *startNode, *endNode, *del;
        	startNode = endNode = del = NULL; 	
 
+	// Find the start location.
 	while(node != NULL)
 	{
 		if(node->x == cpyData.cpyStart.x && node->y == cpyData.cpyStart.y)	
@@ -70,7 +71,8 @@ static void deleteCpyList(dataCopied cpyData, TEXT **headNode)
 		}
 		node = node->next; 
 	}
-
+	
+	// Delete from the list until the end point is reached. 
 	while(node != NULL)
 	{
 		if(node->x == cpyData.cpyEnd.x && node->y == cpyData.cpyEnd.y)	
@@ -87,7 +89,8 @@ static void deleteCpyList(dataCopied cpyData, TEXT **headNode)
 	      	free(del);
 		del = NULL; 	
 	}
-
+	
+	// Link the new list depending on which part of the list that was deleted
 	if(endNode != NULL && startNode != NULL)
 	{
 		endNode->prev = startNode;
@@ -198,19 +201,23 @@ void paste(TEXT **headNode, dataCopied cpyData, coordinates xy)
 
 /**
  * This function requests a start and end location in the terminal.
- * Finally it will save the sub list found between these coordinates.
+ * Using the start and end location it will request for a buffer to be create from the list.
  */
 dataCopied copy(dataCopied cpyData, TEXT *headNode, coordinates xy)
 {
+	// If this function is being recalled and a buffer was already created.
+	// Free the buffer which will be the same as trigger a reset, allowing for a new buffer to be created.
 	if(cpyData.copiedList != NULL)
 	{
 		free(cpyData.copiedList);
 		cpyData.copiedList = NULL;
 	}
 
+	// Set start and end point. 
 	cpyData = startPoint(cpyData, xy);
 	cpyData = endPoint(cpyData, xy);
 
+	// Use the start and end point to create a buffer.
 	if(!cpyData.isStart && !cpyData.isEnd)
 	{
 		cpyData = saveCopiedText(headNode, cpyData);
@@ -221,19 +228,24 @@ dataCopied copy(dataCopied cpyData, TEXT *headNode, coordinates xy)
 
 /**
  * This function requests a start and end location in the terminal.
- * Finally it will save the coordinates found between these characters and also remove the from the main list.
+ * Using the start and end location it will request for a buffer to be create from the list.
+ * Finally it will remove/delete items in between start/end from the main list.
  */
 dataCopied cut(dataCopied cpyData, TEXT **headNode, coordinates xy)
 {
+	// If this function is being recalled and a buffer was already created.
+	// Free the buffer which will be the same as trigger a reset, allowing for a new buffer to be created.
 	if(cpyData.copiedList != NULL)
 	{
 		free(cpyData.copiedList);
 		cpyData.copiedList = NULL;
 	}
-
+	
+	// Set start and end point. 
 	cpyData = startPoint(cpyData, xy);
 	cpyData = endPoint(cpyData, xy);
 
+	// Use the start and end point to create a buffer and delete a segment from the list.
 	if(!cpyData.isStart && !cpyData.isEnd)
 	{
 		cpyData = saveCopiedText(*headNode, cpyData);
