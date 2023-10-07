@@ -1,3 +1,11 @@
+/*
+	Writen by: Oscar Bergström
+	https://github.com/OSCARJFB
+
+	MIT License
+	Copyright (c) 2023 Oscar Bergström
+*/
+
 #ifndef TEXTDATA_H
 #define TEXTDATA_H
 
