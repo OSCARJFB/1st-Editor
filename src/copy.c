@@ -55,7 +55,8 @@ static inline dataCopied endPoint(dataCopied cpyData, coordinates xy)
  */
 static void deleteCpyList(dataCopied cpyData, TEXT **headNode)
 {
-	TEXT *node = *headNode, *startNode = NULL, *endNode = NULL, *del = NULL; 
+	TEXT *node = *headNode, *startNode, *endNode, *del;
+       	startNode = endNode = del = NULL; 	
 
 	while(node != NULL)
 	{
@@ -95,10 +96,12 @@ static void deleteCpyList(dataCopied cpyData, TEXT **headNode)
 	else if(endNode != NULL && startNode == NULL)
 	{
 		*headNode = endNode;
+		(*headNode)->prev = NULL; 
 	}
 	else if(endNode == NULL && startNode != NULL)
 	{
 		*headNode = startNode;
+		(*headNode)->prev = NULL;
 	}
 }
 
